@@ -109,6 +109,42 @@ a.startLost(true);a.begin();
  }
 }
 console.log('PASS: valley geometry is flyable, pads are approachable, no dead stretches');
+
+// You must always be able to take off again from anywhere you can land. Grounded contact used
+// to zero the vertical velocity every tick, which threw away the climb the rotor had just
+// built: the craft could only rise one tick's acceleration at a time, and on a slope it slid
+// downhill faster than that, so the ground never let go and full power went nowhere. That left
+// 151 of 498 resting places in the valley impossible to leave.
+{
+ const slopeAt=x=>Math.atan2(a.ground(x+38)-a.ground(x-37),75);
+ const obs=a.getObstacles();
+ const insideObstacle=x=>obs.some(o=>x+85>o.x&&x-85<o.x+o.w);
+ // Sample slopes of every character, plus the steepest ground the valley has.
+ let steepest=700;
+ for(let x=700;x<a.get().L.beacon;x+=25)
+  if(!insideObstacle(x)&&Math.abs(slopeAt(x))>Math.abs(slopeAt(steepest)))steepest=x;
+ const spots=[390,1000,1350,1725,2875,4880,6900,9100,11300,13600,15800,18100,20400,22800,steepest]
+  .filter(x=>!insideObstacle(x));
+ let worstTime=0,worstAt=null;
+ for(const x of spots){
+  a.startLost(true);a.begin();a.clearInput();      // a crash would freeze every later spot
+  const c=a.get().heli;
+  c.x=x;c.vx=c.vy=c.av=c.cyclic=c.compression=0;c.angle=slopeAt(x);
+  c.collective=0;c.fuel=100;c.y=a.gearSupport();c.landed=true;c.airborne=false;
+  for(let i=0;i<120;i++)a.fixedUpdate(1/120);   // settle
+  a.keys.KeyW=true;
+  let t=0,left=null;
+  while(t<3){a.fixedUpdate(1/120);t+=1/120;if(a.gearSupport()-c.y>12){left=t;break}}
+  a.keys.KeyW=false;
+  assert(left!==null,'Cannot take off at x='+x+', slope '+(slopeAt(x)*57.3).toFixed(1)+' degrees');
+  if(left>worstTime){worstTime=left;worstAt=x}
+ }
+ assert(worstTime<1.6,'Slowest lift-off was '+worstTime.toFixed(2)+'s at x='+worstAt);
+ // Beyond what the gear can take up, lift is cos(angle) of thrust and full collective cannot
+ // beat gravity, so the resting attitude has to stay inside what can be powered out of.
+ assert(Math.cos(.42)*530>315,'The gear slope limit must leave enough thrust pointing up');
+}
+console.log('PASS: the craft can take off again from anywhere it can land');
 // Open sky: continuous climb passes the old ceiling and camera follows at altitude.
 a.loadLevel(0);a.begin();a.clearInput();h=a.get().heli;a.keys.KeyW=true;step(14);a.keys.KeyW=false;
 assert(h.y < -1500,'Can climb far above the old ceiling');assert(h.vy < -100,'No invisible ceiling stops ascent');

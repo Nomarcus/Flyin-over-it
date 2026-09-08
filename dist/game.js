@@ -142,8 +142,13 @@ function fixedUpdate(dt){visualTime+=dt;updateEffects(dt);if(mode!=='playing'){i
  let gy=gearSupport();const wasLanded=heli.landed;heli.landed=false;
  if(heli.y>=gy){const impact=Math.hypot(heli.vx*.55,heli.vy);if(!wasLanded&&heli.airborne){landings++;if(school.active&&school.stage===2){school.cleanLanding=impact<55&&Math.abs(heli.angle)<.2;if(!school.cleanLanding)radio('Lite för hårt. Lyft igen och sänk dig långsammare mot plattan.',5);}if(impact>87||Math.abs(heli.angle)>.34){const dmg=Math.min(65,(Math.max(0,impact-62)*.42)+Math.abs(heli.angle)*28);if(L.lost)lost.reason='För hög fart eller för stor lutning vid markkontakten.';hitHeli(dmg);crashHits++;radio('Hård landning. Bromsa tidigt och räta upp före markkontakt.',4);smoke(heli.x,gy,25,1,'#6b6759');}else if(impact<38&&Math.abs(heli.angle)<.13){const landingKey=Math.round(heli.x/150);if(!precision.landings.has(landingKey)){precision.landings.add(landingKey);score+=75;popup(heli.x,heli.y-58,'MJUK LANDNING +75');}else popup(heli.x,heli.y-58,'MJUK LANDNING');}}if(!wasLanded)heli.compression=clamp(impact*.045,0,5.5);
  const slope=Math.atan2(ground(heli.x+38)-ground(heli.x-37),75);
- heli.angle=damp(heli.angle,slope,Math.abs(inputX)>.05?3:11,dt);heli.bank=damp(heli.bank,0,12,dt);
- gy=gearSupport();heli.y=gy;heli.vy=0;heli.vx*=Math.exp(-3.5*dt);heli.av*=Math.exp(-3*dt);heli.landed=true;heli.airborne=false;
+ // The gear only takes up so much hill. Lying flat along a steep slope pointed the rotor at
+ // the hillside instead of the sky, and since lift is cos(angle) of thrust, anything past
+ // 53 degrees could not be powered out of at all: full collective is 530 against gravity 315.
+ // Past the limit the craft rests on its downhill skid, nose or tail up, and can still fly.
+ const rest=clamp(slope,-.42,.42);
+ heli.angle=damp(heli.angle,rest,Math.abs(inputX)>.05?3:11,dt);heli.bank=damp(heli.bank,0,12,dt);
+ gy=gearSupport();heli.y=gy;heli.vy=Math.min(heli.vy,0);heli.vx*=Math.exp(-3.5*dt);heli.av*=Math.exp(-3*dt);heli.landed=true;heli.airborne=false;
  }else if(gy-heli.y>12)heli.airborne=true;
  collideObstacles(dt);if(mode!=='playing')return;
  heli.spool=damp(heli.spool,heli.fuel?clamp(.45+heli.collective/700,.4,1):.1,2,dt);heli.rotor+=dt*(22+heli.spool*58);

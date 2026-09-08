@@ -62,6 +62,28 @@ In-world signage was suppressed for the whole of play by a condition in `label()
 markings, pad names, cave arrows and the beacon label had never been visible while flying. Only
 the rule that a label never covers the craft remains.
 
+## Taking off again
+
+Two faults made the craft feel stuck on the ground, both found from a player report that a
+slope was hard to leave.
+
+The first was the real one. Ground contact zeroed the vertical velocity on every tick the craft
+touched, which threw away the climb the rotor had just built: it could only ever rise one tick's
+acceleration at a time, about 0.015 units. On a slope it slides while doing that, and the ground
+falls away about 0.015 units per tick as it slides — slightly faster than it rises. Contact
+never broke, and full collective went nowhere while the craft slid quietly downhill. Sweeping
+498 resting places across the valley, 151 could not be left at all and another 41 took over 1.6
+seconds. Contact now cancels downward motion but keeps the climb, and the sweep reports none of
+either.
+
+The second was narrower: the craft was laid flat along whatever slope it sat on, so on ground
+steeper than 53.5 degrees, cos(angle) of full collective (530) fell below gravity (315) and no
+amount of power could lift it. The gear now takes up at most 0.42 rad, resting the craft on its
+downhill skid past that.
+
+Both are covered by a suite that samples slopes of every character plus the steepest ground in
+the valley. It fails on the old code at the first 6.7-degree slope it tries.
+
 ## Attitude and the lift trade
 
 The nose reaches much further over: authority .60 -> .84, hard limit .72 -> .96. Because lift is
@@ -112,7 +134,7 @@ of flying it. A test asserts every gate admits the craft at full tilt.
 
 ## Testing
 
-- `npm test` — 13 suites covering touch input, checkpoints, rescue and return, portrait fill,
+- `npm test` — 14 suites covering touch input, checkpoints, rescue and return, portrait fill,
   altitude zoom-out framing, zoom saturation, the instrument rail contents and its
   write-on-change behaviour, the valley rail (including pads lighting as checkpoints bank),
   the hull/fuel/height alert states, and the new guides under every draw state.
