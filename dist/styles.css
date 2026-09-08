@@ -109,3 +109,45 @@
  #hud #targetGuide{bottom:88px}
  #hud #warning{top:64px}
 }
+
+/* --- Valley rail: the whole route on one line, along the bottom of the flight picture. --- */
+#hud #valleyRail{position:absolute;left:6%;right:6%;bottom:82px;height:16px;pointer-events:none}
+#hud #valleyRail:before{content:'';position:absolute;left:0;right:0;top:7px;height:2px;
+ background:linear-gradient(90deg,#b8d2d216,#b8d2d232 12%,#b8d2d232 88%,#e9c07c4d);border-radius:2px}
+#valleyRail .pad{position:absolute;top:4px;width:2px;height:8px;margin-left:-1px;
+ background:#7f9c9c;border-radius:1px;transition:background .2s,height .2s}
+#valleyRail .pad.reached{background:#b9e1cb;height:12px;top:2px;box-shadow:0 0 7px #b9e1cb66}
+#valleyRail .beacon{position:absolute;top:1px;margin-left:-4px;width:8px;height:14px;
+ background:#e9c07c;border-radius:2px;box-shadow:0 0 10px #e9c07c77}
+#valleyRail .mark{position:absolute;top:-3px;margin-left:-5px;width:0;height:0;
+ border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #f4e3bd;
+ filter:drop-shadow(0 1px 3px #000a);transition:left .12s linear}
+#hud #targetGuide{bottom:106px}
+#hud #tip{bottom:148px}
+@media(max-width:620px){
+ #hud #valleyRail{left:4%;right:4%;bottom:80px}
+ #hud #targetGuide{bottom:102px}
+ #hud #tip{bottom:140px;font-size:11px}
+}
+
+/* A critical warning and a coaching tip share one slot; the warning wins. */
+#hud #tip{transition:opacity .2s}
+#hud #tip.hushed{opacity:0}
+
+/* Short landscape leaves barely 260px of picture: keep one line top, two thin ones bottom,
+   and drop the route summary the valley rail and the rail's own bearing already carry. */
+@media(max-height:520px){
+ #hud #lostStatus:not([hidden]){display:none}
+ #hud #tip{top:60px;bottom:auto;font-size:10px;line-height:1.4;padding:6px 11px;max-width:66%}
+ #hud #warning{top:60px;bottom:auto;font-size:10px;letter-spacing:1.5px}
+ #hud #targetGuide{bottom:104px;font-size:10px;padding:6px 11px}
+ #hud #valleyRail{bottom:82px;height:14px}
+ #valleyRail .pad{top:3px;height:7px}
+ #valleyRail .pad.reached{height:10px;top:2px}
+ #valleyRail .beacon{height:12px}
+}
+@media(max-height:520px){
+ #hud #radio{bottom:126px;max-width:40%;padding-left:9px;font-size:10px}
+ #hud #radio span{font-size:8px;margin-bottom:3px}
+ #hud #radio b{font-size:10px;line-height:1.4}
+}

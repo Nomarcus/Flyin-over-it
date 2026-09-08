@@ -3,7 +3,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert');const {createCa
 const kv={};const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classList:{toggle(){},add(){},remove(){}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
 const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:()=>element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,testArt:{day:await loadImage(root+'/alpine-day.webp'),night:await loadImage(root+'/alpine-night.webp'),jungle:await loadImage(root+'/jungle.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
-code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
 
 const emit=(id,type,pointerId,x,y=300)=>{for(const f of element(id).listeners[type]||[])f({pointerId,clientX:x,clientY:y,preventDefault(){}})};
 a.startLost(true);a.begin();
@@ -86,6 +86,42 @@ assert(/\d+\s*m/.test(nodes.compactGoal.textContent),'Rail shows range to the ob
 h=a.get().heli;h.y-=400;a.updateHUD();
 assert(/<b>1[0-9]{2}/.test(nodes.compactAlt.innerHTML),'Height reading tracks the climb: '+rail('compactAlt'));
 console.log('PASS: instrument rail reports hull, fuel, height and range');
+
+// The valley rail is a one-line map of the route: a tick per relay pad plus the beacon and
+// the craft's own marker, and pads light up as checkpoints are banked.
+a.startLost(true);a.begin();const railEl=nodes.valleyRail;
+assert.equal(railEl.hidden,false,'Valley rail shows in the long valley');
+assert.equal(railEl.children.length,14,'Twelve pads, the beacon and the marker, got '+railEl.children.length);
+const marker=railEl.children[13],firstPad=railEl.children[0];
+h=a.get().heli;h.x=0;a.updateHUD();const atStart=marker.style.left;
+h.x=a.get().L.beacon;a.updateHUD();const atBeacon=marker.style.left;
+assert.equal(atStart,'0%','Marker starts at the mouth of the valley');
+assert.equal(atBeacon,'100%','Marker reaches the beacon');
+assert(parseFloat(firstPad.style.left)>=0&&parseFloat(firstPad.style.left)<=100,'Pads sit on the rail');
+a.loadLevel(0);a.begin();assert.equal(nodes.valleyRail.hidden,true,'Valley rail hides outside the long valley');
+console.log('PASS: valley rail maps pads, beacon and craft position');
+
+// The rail only writes to the DOM when a reading actually changes.
+a.startLost(true);a.begin();a.updateHUD();
+let writes=0;const cache=nodes.compactAlt;let stored=cache.innerHTML;
+Object.defineProperty(cache,'innerHTML',{get:()=>stored,set:v=>{writes++;stored=v},configurable:true});
+h=a.get().heli;h.landed=false;
+for(let i=0;i<25;i++)a.updateHUD();
+assert.equal(writes,0,'Unchanged height is not rewritten, got '+writes+' writes');
+h.y-=300;a.updateHUD();
+assert.equal(writes,1,'A changed height writes exactly once, got '+writes);
+delete cache.innerHTML;cache.innerHTML=stored;
+console.log('PASS: the instrument rail only writes on change');
+
+// Winch guides and the altitude ladder must survive every state they can be drawn in.
+a.startLost(true);a.begin();h=a.get().heli;const survivor=a.get().people[0];
+for(const [x,y,rope,label] of [[survivor.x,survivor.y-150,120,'over a survivor'],
+  [survivor.x-300,survivor.y-90,60,'off to one side'],[390,a.ground(390)-31,0,'parked at base'],
+  [survivor.x,-2000,185,'far above the valley']]){
+ h.x=x;h.y=y;h.rope=rope;h.hookX=x;h.hookY=y+rope;h.landed=rope===0;
+ a.drawWinchGuides();a.drawFlightInstruments();a.render();
+}
+console.log('PASS: winch guides and altitude ladder render in every state');
 console.log('PASS: reserved flight viewport, camera clearance and landscape resize');
 console.log('PASS: two-hand lift, one-hand tilt, released descent, directional swipe, pointer cancellation, pause cleanup, winch toggle, no combat and seven rescue mission gates.');
 })().catch(e=>{console.error(e);process.exit(1)});

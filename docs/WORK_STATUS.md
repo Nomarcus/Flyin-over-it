@@ -33,14 +33,26 @@ This pass reworked the camera and the HUD.
   and the combat buttons. `drawMap` is gone.
 - Narrow screens drop the aboard counter and move bearing/range to a tab under the rail.
 
+## In-world guides
+
+- Altitude ladder along the right edge, reading the same height above ground as the rail:
+  ticks every 50 m, labels every 100, a ground line and a marker that turns warm below 45 m.
+- Ground proximity wash along the bottom edge as the skids close on the terrain.
+- Winch guides drawn at the hook, where the pilot is already looking: rope payout in metres,
+  a pickup ring around the nearest survivor or the cargo, the range to it, and a HÅLL STILLA
+  prompt when the craft is inside the ring but moving too fast for the hook to take.
+- Valley rail along the bottom: a tick per relay pad, the beacon at the far end, and the
+  craft's position between them. Pads light up as checkpoints are banked.
+
 ## Testing
 
-- `npm test` — 8 suites, including new coverage for portrait fill, altitude zoom-out framing,
-  zoom saturation, and the instrument rail contents.
+- `npm test` — 11 suites covering touch input, checkpoints, rescue and return, portrait fill,
+  altitude zoom-out framing, zoom saturation, the instrument rail contents and its
+  write-on-change behaviour, the valley rail, and the new guides under every draw state.
 - Verified in Chromium at 1440x900, 844x390 and 390x844: no page errors, and all four entry
   points (Lost Valley, campaign, flight school, jungle) run clean through pause and settings.
 - Physical iPhone gyro and full-route human playtesting remain outstanding.
 
-`verify-game.cjs` is historical and includes obsolete combat/depth assertions; it is not the
-current regression suite. `IMPOSSIBLE_FLIGHT_PLAN.md` is a historical design document — this
-file takes precedence.
+`verify-game.cjs` was removed: it asserted combat and depth behaviour the game no longer has
+and crashed on run. It remains in git history. `IMPOSSIBLE_FLIGHT_PLAN.md` is a historical
+design document — this file takes precedence.

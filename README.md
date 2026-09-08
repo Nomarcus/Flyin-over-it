@@ -41,13 +41,13 @@ npm install
 npm test
 ```
 
-Tests simulate touch events, flight, checkpoints, rescue completion and high-altitude camera behavior. They do not replace physical phone testing.
+Eleven suites simulate touch events, flight, checkpoints, rescue completion, camera framing at
+altitude, portrait layout and the instrument rail. They do not replace physical phone testing.
 
 ## Files
 
 - `dist/`: playable game, procedural audio and all image assets.
-- `tools/verify-touch.cjs`: current regression checks.
-- `tools/verify-game.cjs`: historical tests for earlier combat/depth experiments.
+- `tools/verify-touch.cjs`: the regression suite (`npm test`).
 - `dist/flight3d.*`: archived 3D experiment, separate from the main game.
 - `docs/`: current status and historical design plan.
 
