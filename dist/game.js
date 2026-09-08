@@ -48,7 +48,7 @@ const screenGrads={key:'',map:{}};
 function screenGrad(name,make){const key=Math.round(vw)+'x'+Math.round(vh);
  if(screenGrads.key!==key){screenGrads.key=key;screenGrads.map={}}
  return screenGrads.map[name]??=make();}
-function resize(){dpr=Math.min(2,window.devicePixelRatio||1);const top=54,bottom=12,available=Math.max(120,innerHeight-top-bottom);
+function resize(){dpr=Math.min(2,window.devicePixelRatio||1);const compact=innerWidth<=620||innerHeight<=520,top=compact?12:54,bottom=12,available=Math.max(120,innerHeight-top-bottom);
  // Landscape keeps the tuned 400-unit world height. Taller-than-wide screens grow the
  // world box instead of shrinking the picture, so portrait fills the screen too.
  baseVw=Math.max(500,innerWidth*400/available);baseVh=clamp(available*baseVw/innerWidth,400,1100);
@@ -58,7 +58,7 @@ addEventListener('resize',resize);if(window.visualViewport)visualViewport.addEve
 function seeded(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}}
 function ground(x){x=clamp(x,0,L.length);const i=Math.min(terrain.length-2,Math.floor(x/40));return lerp(terrain[i],terrain[i+1],(x-i*40)/40)}
 function makeWorld(){const rng=seeded(L.seed);obstacles=[];if(L.lost)obstacles=[
-  {x:1940,y:340,w:280,h:90,type:'bridge'},{x:3420,y:245,w:880,h:275,type:'roof'},
+  {x:1940,w:280,h:90,type:'bridge',gap:175},{x:3420,y:245,w:880,h:275,type:'roof'},
   {x:3680,y:715,w:100,h:75,type:'rock'},{x:4090,y:520,w:90,h:70,type:'rock'},
   {x:4530,y:340,w:110,h:270,type:'pillar'},{x:5490,y:170,w:140,h:250,type:'rock'},
   {x:5780,y:475,w:100,h:165,type:'rock'},
@@ -67,7 +67,7 @@ function makeWorld(){const rng=seeded(L.seed);obstacles=[];if(L.lost)obstacles=[
   {x:8180,w:80,h:290,type:'pillar'},{x:8620,w:70,h:220,type:'pillar'},
   // FLODDALEN -> pad 11300. Low arches. Under is quick, over costs height and time.
   {x:9800,w:240,h:80,type:'bridge',gap:165},{x:10360,w:260,h:90,type:'bridge',gap:150},
-  {x:10820,w:200,h:80,type:'bridge',gap:140},
+  {x:10820,w:200,h:80,type:'bridge',gap:155},
   // FJALLSTATIONEN -> pad 13600. A slot: something above and something below, hold the line.
   {x:12100,w:90,h:230,type:'pillar'},{x:12420,w:420,h:150,type:'roof',gap:185},
   {x:12960,w:90,h:190,type:'pillar'},{x:13060,w:260,h:110,type:'bridge',gap:150},
@@ -83,10 +83,10 @@ function makeWorld(){const rng=seeded(L.seed);obstacles=[];if(L.lost)obstacles=[
   {x:19760,w:280,h:140,type:'roof',gap:170},{x:20080,w:90,h:240,type:'pillar'},
   // FYRLEDEN -> pad 22800. Everything at once, but still fair.
   {x:21300,w:80,h:290,type:'pillar'},{x:21580,w:400,h:150,type:'roof',gap:160},
-  {x:22020,w:80,h:250,type:'pillar'},{x:22260,w:260,h:110,type:'bridge',gap:145},
+  {x:22020,w:80,h:250,type:'pillar'},{x:22260,w:260,h:110,type:'bridge',gap:155},
   // SISTA ANFLYGNINGEN -> the beacon. The narrowest gate on the route, with the most to lose.
   {x:23600,w:90,h:310,type:'pillar'},{x:23920,w:380,h:190,type:'roof',gap:150},
-  {x:24380,w:90,h:270,type:'pillar'},{x:24700,w:260,h:100,type:'bridge',gap:140}
+  {x:24380,w:90,h:270,type:'pillar'},{x:24700,w:260,h:100,type:'bridge',gap:155}
  ];if(L.theme==='jungle')obstacles=[{x:1810,y:425,w:1180,h:165,type:'roof'},{x:3230,y:405,w:110,h:205,type:'pillar'},{x:4420,y:360,w:140,h:250,type:'pillar'}];terrain=[];for(let x=0;x<=L.length+80;x+=40){let y=570+Math.sin(x*.002+L.seed)*58+Math.sin(x*.0062)*25+Math.sin(x*.015)*7;if(x<660)y=610;else if(x<850)y=lerp(610,y,(x-660)/190);if(L.cargo){const d=Math.abs(x-L.cargo.x),e=Math.abs(x-L.cargo.to);if(d<120)y=600;if(e<180)y=578}if(L.theme==='jungle'&&x>=1000&&x<=3580){if(x<1600)y=lerp(610,885,(x-1000)/600);else if(x<3020)y=885;else y=lerp(885,610,(x-3020)/560);}if(L.lost)y=lostTerrain(x,y);terrain.push(y)}for(const o of obstacles){
   if(o.type==='pillar'){o.y=ground(o.x+o.w*.5)-o.h;continue}
   if(o.gap===undefined)continue;
@@ -126,9 +126,9 @@ function fixedUpdate(dt){visualTime+=dt;updateEffects(dt);if(mode!=='playing'){i
  const mass=1+heli.carrying*.028+(heli.ropeTarget?.kind==='cargo'?.28*heli.ropeSupport:heli.ropeTarget?.kind==='person'?.028*heli.ropeSupport:0);heli.cyclic=damp(heli.cyclic,inputX,5.4*save.sensitivity,dt);
  // Restore the first successful 2.5D flight spring and rotor response (00d64ca).
  const clearance=ground(heli.x)-heli.y-30.8,air=heli.landed?0:clamp(clearance/18,0,1),groundWash=clamp(1-clearance/115,0,1);
- const targetAngle=heli.cyclic*(hoverMode?.32:.60);
+ const targetAngle=heli.cyclic*(hoverMode?.34:.84);
  const angularAccel=(targetAngle-heli.angle)*10.7-heli.av*5.7;
- heli.av+=angularAccel*dt;heli.angle=clamp(heli.angle+heli.av*dt,-.72,.72);
+ heli.av+=angularAccel*dt;heli.angle=clamp(heli.angle+heli.av*dt,-.96,.96);
  heli.bank=damp(heli.bank,heli.landed?0:clamp(-heli.angle*.45-heli.av*.08,-.26,.26),2.7,dt);
  heli.compression=damp(heli.compression,0,5.5,dt);
  const gravity=315;let targetLift=gravity+inputY*215;if(heli.landed&&inputY<=.05)targetLift=0;
@@ -223,7 +223,7 @@ function updateEffects(dt){shake*=Math.exp(-6*dt);damageFlash=Math.max(0,damageF
 function poly(points,fill,stroke){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}}
 function line(x1,y1,x2,y2,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
 function ellipse(x,y,rx,ry,color){ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,Math.max(.01,rx),Math.max(.01,ry),0,0,TAU);ctx.fill()}
-function label(text,x,y,color='#d7e5df',size=11,align='center'){if(mode==='playing'&&Math.abs(x-heli.x)<150&&Math.abs(y-heli.y)<100)return;ctx.font=`${size<12?'600':'500'} ${size}px ui-monospace,monospace`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(text,x,y);ctx.textAlign='left'}
+function label(text,x,y,color='#d7e5df',size=11,align='center'){if(mode==='playing'&&Math.abs(x-heli.x)<150&&Math.abs(y-heli.y)<100)return;const px=size*1.92/scale;ctx.font=`${size<12?'600':'500'} ${px}px ui-monospace,monospace`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(text,x,y);ctx.textAlign='left'}
 function glow(x,y,r,color){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2)}
 function palette(){const night=L.theme==='night',snow=L.theme==='snow',sun=L.theme==='sunset';return{top:snow?'#b7cace':night?'#244251':sun?'#776345':'#57726c',edge:snow?'#e4eddf':night?'#547683':sun?'#b19361':'#9ea88a',front:snow?'#506776':night?'#142b3b':sun?'#433f36':'#304955',facet:snow?'#657e87':night?'#1c3543':sun?'#585044':'#3f5961',tree:snow?'#547879':night?'#1d3f4b':'#35645e',treeLight:snow?'#acc8c5':night?'#335666':'#577e6a',night,snow};}
 // Keep the original 720-unit backdrop composition while the flight camera zooms in.

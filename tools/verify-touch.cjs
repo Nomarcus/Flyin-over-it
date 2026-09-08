@@ -20,11 +20,14 @@ emit('flightLeft','pointerdown',7,100);emit('flightLeft','pointerdown',8,110);em
 for(let i=0;i<8;i++){a.loadLevel(i);a.begin();const state=a.get();assert.equal(state.enemies.length,0);assert(!state.boss);a.keys.Space=true;a.edges.KeyR=true;a.updateWeapons(.1);assert.equal(state.bullets.length,0);assert.equal(state.rockets.length,0);state.people.forEach(p=>p.status='aboard');state.heli.carrying=state.people.length;if(state.cargo)state.cargo.status='delivered';if(i<7){step(1.8);assert.equal(a.get().mode,'debrief','Peaceful mission '+i+' finishes');}}
 
 a.startLost(true);a.begin();let craft=a.get().heli;craft.x=2200;craft.y=25;craft.landed=false;step(.05);let view=a.get();assert(view.heli.y-view.cameraY>=119,'Rotor has top clearance');assert(view.heli.x-view.camera>=129,'Side clearance');assert(view.oy>=54,'Canvas below status rail');assert(view.oy+view.vh*view.scale<=sandbox.innerHeight-11,'Canvas within the bottom margin');
-sandbox.innerWidth=844;sandbox.innerHeight=390;a.resize();view=a.get();assert(view.oy>=54);assert(view.oy+view.vh*view.scale<=379);
-// The picture must claim nearly everything below the instrument rail: a reserved control
-// rail used to eat a fifth of a landscape phone before the winch button was made to float.
+sandbox.innerWidth=844;sandbox.innerHeight=390;a.resize();view=a.get();
+// On a phone both rails float over the picture rather than reserving bands of their own, so
+// the flight view claims almost the whole screen. Reserving them cost a third of a landscape
+// iPhone between them.
+assert(view.oy>=10&&view.oy<=16,'Phone reserves only a thin top margin, got '+Math.round(view.oy));
 const drawnLandscape=view.vh*view.scale;
-assert(drawnLandscape>=390-54-13,'Landscape picture fills below the rail, drew '+Math.round(drawnLandscape)+' of '+(390-54-12));
+assert(drawnLandscape>=390-26,'Landscape picture fills the screen, drew '+Math.round(drawnLandscape)+' of 390');
+assert(view.oy+drawnLandscape<=381,'Picture stays on screen');
 a.render();
 // Long-valley checkpoints must save and restore beyond the original four pads.
 a.startLost(true);a.begin();h=a.get().heli;
@@ -76,6 +79,25 @@ a.startLost(true);a.begin();
    assert(slot>=CRAFT+40,'Roof at '+r.x+' and pillar at '+p.x+' leave a '+slot.toFixed(0)+' slot');
   }
 
+ // Fairness: a deeply tilted craft is taller than a level one, because the rotor disc swings
+ // into the vertical. Every gate has to admit the craft at the full nose-down attitude, or the
+ // level is asking for something it does not allow.
+ {
+  const pts=[[0,0,25],[35,0,14],[-70,-12,10],[-75,-47,5],[75,-47,5],[0,-47,5]];
+  const extent=ang=>{let lo=Infinity,hi=-Infinity;
+   for(const [px,py,r] of pts){const ry=px*Math.sin(ang)+py*Math.cos(ang);lo=Math.min(lo,ry-r);hi=Math.max(hi,ry+r)}
+   return hi-lo};
+  const level=extent(0),tilted=extent(.96);
+  assert(tilted>level,'A tilted craft is taller than a level one');
+  let tightest=Infinity,where=null;
+  for(const o of obs.filter(o=>o.gap!==undefined)){
+   let min=Infinity;
+   for(let x=o.x;x<=o.x+o.w;x+=10)min=Math.min(min,a.ground(x)-(o.y+o.h));
+   if(min<tightest){tightest=min;where=o.x}
+  }
+  assert(tightest>tilted,'Gate at x='+where+' is '+tightest.toFixed(0)+' but a fully tilted craft needs '+tilted.toFixed(0));
+ }
+
  // Landing has to be possible: keep the approach to every pad clear.
  for(const p of pads){
   const half=p.w/2;
@@ -123,15 +145,25 @@ assert(coast/brake>3,'Coasting must cost far more ground than braking, ratio '+(
 h=fly(0);let peak=0;a.keys.KeyD=true;
 for(let i=0;i<220;i++){a.fixedUpdate(tick);level(h);peak=Math.max(peak,Math.abs(h.angle))}
 a.keys.KeyD=false;
-assert(peak<=.62,'Attitude does not overshoot into twitchiness, peak '+peak.toFixed(3));
+assert(peak>.78&&peak<=.90,'The nose reaches deep but does not tip over, peak '+peak.toFixed(3));
+
+// The point of a deep nose: lift is cos(angle) of rotor thrust, so speed is bought with
+// height. Held at hover power the floor must come up, and it must buy real speed for it.
+h=fly(0);a.keys.KeyD=true;
+// Pin the collective at hover power: the claim is about what tilt alone does to lift, not
+// about whatever a leftover touch session is asking the engine for.
+for(let i=0;i<240;i++){h.collective=315;a.fixedUpdate(tick)}
+a.keys.KeyD=false;
+assert(h.vy>70,'A deep nose sinks at hover power, got '+Math.round(h.vy));
+assert(h.vx>230,'A deep nose buys real speed for that height, got '+Math.round(h.vx));
 console.log('PASS: handling asks for planning without becoming twitchy');
 
 // Portrait fills the screen: the world box grows instead of the picture shrinking into bars.
 sandbox.innerWidth=390;sandbox.innerHeight=844;a.resize();let portrait=a.get();
-const availableH=844-54-12,drawn=portrait.baseVh*(portrait.scale*portrait.zoom);
+const availableH=844-12-12,drawn=portrait.baseVh*(portrait.scale*portrait.zoom);
 assert(portrait.baseVh>600,'Portrait grows the world box, got '+portrait.baseVh);
 assert(drawn>=availableH*.95,'Portrait fills the flight area, drew '+Math.round(drawn)+' of '+availableH);
-assert(portrait.oy>=54&&portrait.oy+drawn<=844-11,'Portrait canvas stays inside the rails');
+assert(portrait.oy>=10&&portrait.oy+drawn<=844-11,'Portrait canvas stays inside the margins');
 sandbox.innerWidth=1440;sandbox.innerHeight=900;a.resize();
 console.log('PASS: portrait fills the flight area without letterboxing');
 

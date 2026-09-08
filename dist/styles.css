@@ -213,3 +213,24 @@
    the progress sits in the valley strip, and the run stats are in the pause menu. Drop it and
    give the picture the space. Desktop has room, so it keeps it. */
 @media(max-width:620px){#hud #lostStatus:not([hidden]){display:none}}
+
+/* --- Phone: the rail floats over the picture. ------------------------------------------
+   Reserving 54px for it cost 14% of the height on a landscape iPhone. A scrim behind the
+   text keeps it readable over bright sky without spending a band of screen on it. */
+@media(max-width:620px),(max-height:520px){
+ #compactHud{height:46px;border-bottom:0;
+  background:linear-gradient(180deg,#061a24e6 0%,#061a24b0 62%,#061a2400 100%);
+  padding-bottom:6px}
+ #hud #valleyRail{top:48px}
+ #hud #tip{top:66px}
+ #hud #warning{top:66px}
+ #toolbar{top:3px!important}
+ .flightHalf{top:46px}
+ #hud #compactGoal{top:46px}
+ #hud #lostStatus:not([hidden]){top:70px}
+}
+@media(max-width:620px){
+ #hud #valleyRail{top:72px}
+ #hud #tip{top:90px}
+ #hud #warning{top:90px}
+}

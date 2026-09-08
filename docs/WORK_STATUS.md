@@ -48,6 +48,9 @@ principle that the pad at the end of a section should be earned:
 - Fyrleden: everything at once, but still fair.
 - Sista anflygningen: the narrowest gate on the route, with the most to lose.
 
+The first arch in the game was also its tightest passage, 112 units against a craft 77 tall. It
+is now 175, and the three snuggest gates went to 155, so the curve starts gentle and tightens.
+
 Roofs can always be flown over instead of under, so each is a route choice rather than a wall:
 under is fast and tight, over costs height. Hanging obstacles are placed by the clearance they
 leave, measured against the highest ground they cross, so the stated gap is the worst case.
@@ -59,6 +62,25 @@ In-world signage was suppressed for the whole of play by a condition in `label()
 markings, pad names, cave arrows and the beacon label had never been visible while flying. Only
 the rule that a label never covers the craft remains.
 
+## Attitude and the lift trade
+
+The nose reaches much further over: authority .60 -> .84, hard limit .72 -> .96. Because lift is
+cos(angle) of rotor thrust, a deep nose buys speed out of height. Measured at hover power:
+
+    peak attitude        .596 -> .835   +40%
+    sink at full tilt      45 -> 87     +93%
+    speed at full tilt    195 -> 267    +37%
+    braking distance      133 -> 122     -8%
+
+So the nose is now something to hold rather than something to hold down: put it over for speed
+and the floor comes up to meet you unless you add collective. Braking improved as a side effect,
+since the same deeper attitude bites harder against the direction of travel.
+
+A tilted craft is also taller, because the rotor disc swings into the vertical: 77 units level,
+101 at 20 degrees, 132 at the limit. The tightest gate in the valley is 155, so the craft always
+fits, but the margin falls from 78 units to 23. Levelling out to thread a gap is now a real part
+of flying it. A test asserts every gate admits the craft at full tilt.
+
 ## Screen budget
 
 - The winch button used to sit in a reserved 78px rail. On a landscape phone that was a fifth
@@ -68,6 +90,11 @@ the rule that a label never covers the craft remains.
   quarter in landscape.
 - The world-height cap rose to 1100 so portrait can still fill the taller area without
   letterboxing.
+- The instrument rail floats over the picture on phones behind a scrim instead of reserving a
+  54px band, which had cost 14% of a landscape iPhone. With the winch pill that takes the black
+  chrome from a third of the screen to almost nothing.
+- Signage is held at a constant size on screen. Sizes are authored in world units, so a phone's
+  wider world box shrank every sign and zooming out shrank them further.
 - The route summary is hidden on phones: the bearing and range are in the instrument rail, the
   progress is in the valley strip, and the run stats are in the pause menu. Desktop keeps it.
 - The valley strip moved under the instrument rail, below the bearing tab on narrow screens.
