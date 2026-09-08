@@ -1,0 +1,11 @@
+{
+  "name": "flyin-over-it",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node tools/verify-touch.cjs"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "0.1.100"
+  }
+}
