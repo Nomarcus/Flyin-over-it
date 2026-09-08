@@ -326,7 +326,7 @@ function drawAtmosphere(){const p=palette(),sun=L.theme==='sunset',storm=L.theme
 }
 function drawGroundDetail(){const p=palette();for(let x=Math.floor((camera-40)/16)*16;x<camera+vw+40;x+=16){if(x<680)continue;const y=ground(x),n=Math.sin(x*43.7),gust=Math.sin(visualTime*2+x*.03)*2+wind*.08,rotorWash=clamp(1-Math.abs(x-heli.x)/100,0,1)*clamp(1-(ground(heli.x)-heli.y)/150,0,1)*heli.spool*13*Math.sign(x-heli.x);for(let j=0;j<3;j++)line(x+j*3,y+1,x+j*3+gust+rotorWash,y-3-Math.abs(n)*7,p.snow?'#e2eddf77':'#a5b08a66',1);if(n>.5)ellipse(x+4,y+5,3,1.5,p.edge);}}
 function drawTerrain(){const p=palette();const a=Math.max(0,Math.floor((camera-100)/40)),b=Math.min(terrain.length-1,Math.ceil((camera+vw+100)/40));const pts=[[a*40,1250]];for(let i=a;i<=b;i++)pts.push([i*40,terrain[i]]);pts.push([b*40,1250]);poly(pts,p.front);
- for(let i=a;i<b;i++){const x=i*40,y=terrain[i],ny=terrain[i+1],depth=50+Math.sin(i*2.75)*25;poly([[x,y+13],[x+40,ny+13],[x+30,ny+depth+50],[x-8,y+depth+70]],i%3===0?p.facet:p.front);if(i%2===0)poly([[x,y+22],[x+40,ny+14],[x+14,y+38]],p.facet);poly([[x-4,y-12],[x+36,ny-12],[x+40,ny+12],[x,y+12]],p.top);line(x,y,x+40,ny,p.edge,2);if(i%4===0){line(x+7,y+65,x+18,y+95,'#0a1e292a',2);line(x+18,y+95,x+44,y+108,'#0a1e292a',1)}}
+ for(let i=a;i<b;i++){const x=i*40,y=terrain[i],ny=terrain[i+1],depth=50+Math.sin(i*2.75)*25;poly([[x,y+13],[x+40,ny+13],[x+30,ny+depth+50],[x-8,y+depth+70]],i%3===0?p.facet:p.front);if(i%2===0)poly([[x,y+22],[x+40,ny+14],[x+14,y+38]],p.facet);poly([[x,y],[x+40,ny],[x+40,ny+10],[x+27,ny+15],[x,y+11]],p.top);line(x,y,x+40,ny,p.edge,2);if(i%4===0){line(x+7,y+65,x+18,y+95,'#0a1e292a',2);line(x+18,y+95,x+44,y+108,'#0a1e292a',1)}}
  const g=ctx.createLinearGradient(0,900,0,1300);g.addColorStop(0,'#06192200');g.addColorStop(1,'#061922a0');ctx.fillStyle=g;ctx.fillRect(camera-20,900,vw+40,400);
 }
 function drawJungleTree(t){ctx.save();ctx.translate(t.x,t.y);ctx.scale(t.s,t.s);const sway=Math.sin(visualTime*1.2+t.x*.007)*3;poly([[-6,0],[5,0],[sway+7,-65],[sway+1,-94],[-2,-65]],'#4a6851');line(-1,0,sway+3,-77,'#a4ac6a',2);for(let j=0;j<7;j++){const a=j*TAU/7,xx=Math.cos(a)*27+sway,yy=-82+Math.sin(a)*16;ellipse(xx,yy,24,14,j%2?'#356e56':'#42896a');poly([[sway,-78],[xx-17,yy+3],[xx,yy-11],[xx+18,yy+4]],j%2?'#43866a':'#599975');line(sway,-76,xx+10,yy,'#a0b77855',1);}for(let j=0;j<3;j++){const x=sway-18+j*16;ctx.beginPath();ctx.moveTo(x,-76);ctx.quadraticCurveTo(x+12+Math.sin(visualTime+j)*3,-42,x-2,-14);ctx.strokeStyle='#6e935e';ctx.lineWidth=1.5;ctx.stroke();}ctx.restore();}
@@ -341,101 +341,60 @@ const ROCK={lit:'#7d9384',mid:'#4c6a63',dark:'#28464b',deep:'#16303a',rim:'#c8b9
 
 function groundShadow(o){const g=ground(o.x+o.w*.5);ellipse(o.x+o.w*.5,g+2,o.w*.62,7,ROCK.shadow);}
 
-// A rock spire: tapered, faceted, lit from the sunrise side, capped with whatever grows up there.
+// All solid paint stays inside the existing collision footprint. Texture is deterministic:
+// rendering must never consume simulation randomness or change the authored clearances.
+function stoneFace(o,points,ceiling=false){
+ const {x,y,w,h}=o,bottom=y+h+(o.drip||0);
+ ctx.save();ctx.beginPath();points.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));ctx.closePath();ctx.clip();
+ const shade=ctx.createLinearGradient(x,y,x+w,bottom);
+ shade.addColorStop(0,ceiling?'#476561':'#819184');shade.addColorStop(.34,'#45615f');shade.addColorStop(1,'#172f3c');
+ ctx.fillStyle=shade;ctx.fillRect(x,y,w,bottom-y);
+ // Interlocking mineral planes vary in scale and direction, rather than repeating tiles.
+ for(let j=0;j<Math.ceil((bottom-y)/65);j++){
+  const sy=y+j*65;
+  for(let i=0;i<Math.ceil(w/87)+1;i++){
+   const seed=x+i*113+j*47,px=x+i*87-30+(j%2)*39;
+   const peak=sy-14+hash(seed)*30,edge=px+48+hash(seed+4)*42;
+   poly([[px,sy+10],[px+29,peak],[edge,sy+4],[edge+12,sy+51],[px+42,sy+77]],['#aec0a526','#061e3930','#90aa991c'][Math.floor(hash(seed+9)*3)]);
+   line(px+3,sy+12,px+29,peak,'#cbd0aa2a',1);
+   line(px+29,peak,edge,sy+4,'#0b243543',1.3);
+   if(hash(seed+21)>.46){line(edge,sy+4,edge-13,sy+34,'#0b223555',1.4);line(edge-13,sy+34,edge-4,sy+48,'#0b223555',1);}
+   for(let n=0;n<3;n++){const sx=px+hash(seed+n*19)*70,yy=sy+hash(seed+n*31)*62;ellipse(sx,yy,.7+hash(seed+n)*1.4,.65,'#c5cba527');}
+  }
+ }
+ // Weathered upper ledge and a readable contact edge, all on the solid side.
+ poly([[x,y],[x+w,y],[x+w,y+5],[x+w*.68,y+9],[x+w*.29,y+5],[x,y+11]],h>260&&L.theme!=='jungle'?ROCK.snow:ROCK.moss);
+ ctx.strokeStyle='#d8d7b56b';ctx.lineWidth=3;ctx.beginPath();points.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));ctx.closePath();ctx.stroke();
+ if(ceiling){
+  ctx.fillStyle='#0b233a70';ctx.fillRect(x,bottom-12,w,12);
+  for(let px=x;px<x+w;px+=31){const d=6+hash(px)*12;poly([[px,bottom-20],[px+23,bottom-20],[px+13,bottom-d]],'#75968b55');}
+  line(x,bottom-1,x+w,bottom-1,'#acc3aa',2);
+ }
+ ctx.restore();
+}
 function drawPillar(o){
- const x=o.x,y=o.y,w=o.w,h=o.h,r1=hash(x),r2=hash(x+7),r3=hash(x+19);
- const topW=o.topW,tx=o.tx;
  groundShadow(o);
- // Body: a single tapered silhouette, then a lighter face down the sunrise edge.
- const body=[[x,y+h],[x+w,y+h],[tx+topW,y+9],[tx+topW*.68,y],[tx+topW*.24,y+4],[tx,y+12]];
- poly(body,ROCK.dark);
- poly([[x+w*.52,y+h],[x+w,y+h],[tx+topW,y+9],[tx+topW*.68,y],[x+w*.62,y+h*.42]],ROCK.mid);
- poly([[x+w*.78,y+h],[x+w,y+h],[tx+topW,y+11],[x+w*.86,y+h*.5]],ROCK.lit);
- // Strata: a few near-horizontal breaks that follow the taper.
- for(let i=1;i<5;i++){
-  const t=i/5,ly=y+12+(h-12)*t,inset=w*.5*(1-t)*.55;
-  line(x+inset*(1-t)+w*.06,ly,x+w-inset*.4,ly+w*.05*(hash(x+i*13)-.5),ROCK.deep+'',1);
- }
- // A hard rim on the lit edge is what makes it read as stone rather than a shape.
- line(tx+topW,y+10,x+w,y+h,ROCK.rim+'4a',2);
- // Cap: moss and a few tufts, snow on the tallest spires.
- const capped=h>250;
- poly([[tx,y+12],[tx+topW*.24,y+4],[tx+topW*.68,y],[tx+topW,y+9],[tx+topW*.8,y+17],[tx+topW*.3,y+19]],capped?ROCK.snow:ROCK.moss);
- if(!capped)for(let i=0;i<4;i++){const px=tx+topW*(.15+i*.22),ph=4+hash(x+i*31)*7;
-  poly([[px,y+8],[px+3,y+8-ph],[px+7,y+9]],ROCK.mossLit);}
- // Scree gathering at the foot.
- for(let i=0;i<5;i++){const sx=x+w*(.1+hash(x+i*53)*.85),s=2+hash(x+i*17)*4;
-  poly([[sx-s,y+h],[sx,y+h-s*1.3],[sx+s,y+h]],i%2?ROCK.mid:ROCK.dark);}
+ stoneFace(o,[[o.tx,o.y],[o.tx+o.topW,o.y],[o.x+o.w,o.y+o.h],[o.x,o.y+o.h]]);
 }
-
-// A span you fly under: deck on top, truss below, and the underside is what matters.
+// A closed, riveted box girder: inset panels are solid metal, never apparent fly-through gaps.
 function drawSpan(o){
- const x=o.x,y=o.y,w=o.w,h=o.h,deck=Math.min(20,h*.42),base=y+h;
- const WOOD={dark:'#3b3a33',mid:'#5d5647',lit:'#7d7259',iron:'#2c3c42'};
- // Deck slab with plank ends.
- ctx.fillStyle=WOOD.mid;ctx.fillRect(x,y,w,deck);
- ctx.fillStyle=WOOD.lit;ctx.fillRect(x,y,w,3);
- for(let px=x+6;px<x+w-4;px+=14)line(px,y+3,px,y+deck,WOOD.dark,1);
- line(x,y+deck,x+w,y+deck,WOOD.dark,2);
- // Railing.
- for(let px=x+8;px<x+w-6;px+=26)line(px,y,px,y-9,WOOD.dark,2);
- line(x,y-9,x+w,y-9,WOOD.dark,2);
- // Truss: alternating diagonals with vertical hangers, the shape you read the gap from.
- const th=base-(y+deck);
- for(let px=x;px<x+w-1;px+=34){
-  const pw=Math.min(34,x+w-px);
-  line(px,y+deck,px+pw,base,WOOD.iron,2);
-  line(px+pw,y+deck,px,base,WOOD.iron,2);
-  line(px,y+deck,px,base,WOOD.dark,2);
- }
- line(x,base,x+w,base,WOOD.iron,3);
- // Piers at both ends, dropping toward the valley floor.
- for(const px of [x+3,x+w-9]){
-  const foot=ground(px+3);
-  ctx.fillStyle=WOOD.dark;ctx.fillRect(px,y,6,Math.max(h+12,foot-y));
-  ctx.fillStyle=WOOD.iron;ctx.fillRect(px-3,foot-6,12,6);
- }
-}
-
-// An overhang: heavy above, ragged and dripping below, dark enough to read as a passage.
-function drawOverhang(o){
- const x=o.x,y=o.y,w=o.w,h=o.h,lip=y+h;
- const g=ctx.createLinearGradient(0,y,0,lip);
- g.addColorStop(0,'#16303a');g.addColorStop(.55,'#22414a');g.addColorStop(1,'#2f5259');
+ const {x,y,w,h}=o;ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
+ const g=ctx.createLinearGradient(0,y,0,y+h);g.addColorStop(0,'#85918a');g.addColorStop(.12,'#44585b');g.addColorStop(.8,'#283e49');g.addColorStop(1,'#112a37');
  ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
- // Ragged lower edge: the silhouette that tells you where the ceiling really is.
- const teeth=[];
- for(let px=x;px<=x+w;px+=26)teeth.push([px,lip-hash(px)*7]);
- poly([[x,lip-14],...teeth,[x+w,lip-14]],'#2f5259');
- for(let px=x+14;px<x+w-8;px+=34){
-  const d=4+hash(px*1.7)*(o.drip||20);
-  poly([[px-4,lip],[px+4,lip],[px+hash(px)*3,lip+d]],'#27484f');
+ for(let px=x+5;px<x+w;px+=45){
+  ctx.fillStyle='#152d384f';ctx.fillRect(px+4,y+12,33,h-24);
+  line(px,y+8,px,y+h-7,'#8c9b8975',3);
+  line(px+3,y+12,px+39,y+h-12,'#a5ac8b55',3);
+  line(px+4,y+15,px+39,y+h-9,'#071e3b66',1);
+  for(const yy of [y+6,y+h-6]){ellipse(px,yy,2.3,2.3,'#132c3a');ellipse(px-.5,yy-.6,1.2,1.2,'#c6c8ac');}
  }
- // Moss fringe and a little light bleeding along the lip.
- for(let px=x+8;px<x+w-6;px+=17){const t=3+hash(px+5)*6;
-  poly([[px,lip],[px+4,lip+t],[px+9,lip]],'#4d7350');}
- line(x,lip,x+w,lip,'#87a58a55',2);
- // Weight above: strata and a mossy crown so it does not float.
- for(let i=1;i<4;i++){const ly=y+h*i/5;line(x+w*.04,ly,x+w*.96,ly+(hash(x+i)-.5)*8,'#12283199',1);}
- ctx.fillStyle=ROCK.moss;ctx.fillRect(x,y,w,7);
- for(let px=x+10;px<x+w-14;px+=24){const ph=4+hash(px*2.3)*9;
-  poly([[px,y+3],[px+4,y+3-ph],[px+10,y+4]],ROCK.mossLit);}
+ ctx.fillStyle='#a0a68c';ctx.fillRect(x,y,w,3);ctx.fillStyle='#91a59a';ctx.fillRect(x,y+h-3,w,2);
+ for(const px of [x,x+w-10]){ctx.fillStyle='#253d46';ctx.fillRect(px,y,10,h);for(let yy=y+8;yy<y+h;yy+=17)poly([[px,yy],[px+10,yy-5],[px+10,yy+1],[px,yy+6]],'#c3a265');}
+ ctx.restore();
 }
-
-// A boulder: rounded, faceted, sitting in the terrain rather than pasted on it.
-function drawBoulder(o){
- const x=o.x,y=o.y,w=o.w,h=o.h,cx=x+w*.5,cy=y+h*.5;
- groundShadow(o);
- const pts=[];
- for(let i=0;i<9;i++){const a=i/9*TAU,k=.74+hash(x+i*23)*.26;
-  pts.push([cx+Math.cos(a)*w*.5*k,cy+Math.sin(a)*h*.5*k]);}
- poly(pts,ROCK.dark);
- poly(pts.slice(0,5),ROCK.mid);
- poly([pts[7],pts[8],pts[0],[cx,cy]],ROCK.lit);
- line(pts[8][0],pts[8][1],pts[0][0],pts[0][1],ROCK.rim+'40',2);
- for(let i=0;i<3;i++){const t=(i+1)/4;
-  line(x+w*.12,y+h*t,x+w*.88,y+h*t+(hash(x+i*11)-.5)*6,'#13303a80',1);}
-}
+function drawOverhang(o){stoneFace(o,[[o.x,o.y],[o.x+o.w,o.y],[o.x+o.w,o.y+o.h+(o.drip||0)],[o.x,o.y+o.h+(o.drip||0)]],true);}
+// These authored obstacles collide as rectangular blocks: exposed cut stone makes that honest.
+function drawBoulder(o){groundShadow(o);stoneFace(o,[[o.x,o.y],[o.x+o.w,o.y],[o.x+o.w,o.y+o.h],[o.x,o.y+o.h]]);}
 
 function drawObstacles(){if(L.lost){const g=ctx.createLinearGradient(0,520,0,790);g.addColorStop(0,'#183039e8');g.addColorStop(1,'#34545188');ctx.fillStyle=g;ctx.fillRect(3420,520,880,270);}if(L.theme==='jungle'){const cave=ctx.createLinearGradient(0,590,0,885);cave.addColorStop(0,'#0c242cef');cave.addColorStop(1,'#224441b0');ctx.fillStyle=cave;ctx.fillRect(1810,590,1180,295);for(let x=1830;x<2990;x+=120){poly([[x,595],[x+50,640],[x+90,800],[x+30,875],[x-15,720]],'#50746724');}}for(const o of obstacles){
   if(o.x+o.w<camera-100||o.x>camera+vw+100)continue;
@@ -931,3 +890,4 @@ addEventListener('blur',()=>{if(lost.active)saveLost();clearInput();if(mode==='p
 let previous=0,accumulator=0;function frame(now){const dt=Math.min(.08,(now-previous)/1000||0);previous=now;accumulator+=dt;while(accumulator>=1/120){fixedUpdate(1/120);accumulator-=1/120;}render();requestAnimationFrame(frame);}
 resize();loadLevel(0,false);if(save.unlocked>0)$('startBtn').innerHTML='FORTSÄTT KAMPANJ <span>→</span>';requestAnimationFrame(frame);
 })();
+
