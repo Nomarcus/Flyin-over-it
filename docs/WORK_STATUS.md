@@ -33,6 +33,36 @@ This pass reworked the camera and the HUD.
   and the combat buttons. `drawMap` is gone.
 - Narrow screens drop the aboard counter and move bearing/range to a tab under the rail.
 
+## Obstacle art
+
+Every obstacle used to be the same tinted box with a green hat, whatever it was, which is why
+they read as boxes. Each type is now drawn as the thing it is, hashed off its world position so
+shapes vary along the valley without flickering between frames:
+
+- Pillars taper, carry facets and strata, catch the sunrise down one edge, and are capped with
+  moss or, on the tallest spires, snow. Scree gathers at the foot.
+- Spans have a deck with plank ends, a railing, an alternating truss, and piers that reach the
+  valley floor. The truss is what you read the gap from as you go under it.
+- Overhangs hang with weight: a dark mass above, a ragged lip with stalactites and a moss fringe
+  below, and a lantern line to invite you into the passage.
+- Boulders are faceted and rounded rather than rectangular.
+
+The hazard outline was removed with them. Stroking a rectangle around every obstacle read as a
+selection box once the obstacles stopped being rectangles; the warm glow at the nearest point
+and the rotor callout already say what it said.
+
+## The ending turns
+
+Reaching Eagle Base opens the debrief, and the debrief has a second beat. The distress beacon
+was a scheduled test transmission from the weather station, and the two people winched off the
+mountain were technicians on a service visit who had a car. They came along because you looked
+like you had made an effort. Nobody was ever in danger, and Ann-Sofie would like to know if you
+could fly back, because they left the toolbox.
+
+Crash lines went from four to fifteen and checkpoints now hand out one of seven grudging
+compliments. A test asserts the ending is reachable and that the turn actually shows: an ending
+no one sees is not an ending.
+
 ## The valley is built end to end
 
 Obstacles used to stop at x=5,800 of 25,200: three quarters of the route was empty terrain
@@ -134,7 +164,7 @@ of flying it. A test asserts every gate admits the craft at full tilt.
 
 ## Testing
 
-- `npm test` — 14 suites covering touch input, checkpoints, rescue and return, portrait fill,
+- `npm test` — 15 suites covering touch input, checkpoints, rescue and return, portrait fill,
   altitude zoom-out framing, zoom saturation, the instrument rail contents and its
   write-on-change behaviour, the valley rail (including pads lighting as checkpoints bank),
   the hull/fuel/height alert states, and the new guides under every draw state.

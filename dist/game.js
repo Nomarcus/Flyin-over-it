@@ -254,7 +254,125 @@ function drawTerrain(){const p=palette();const a=Math.max(0,Math.floor((camera-1
  const g=ctx.createLinearGradient(0,900,0,1300);g.addColorStop(0,'#06192200');g.addColorStop(1,'#061922a0');ctx.fillStyle=g;ctx.fillRect(camera-20,900,vw+40,400);
 }
 function drawJungleTree(t){ctx.save();ctx.translate(t.x,t.y);ctx.scale(t.s,t.s);const sway=Math.sin(visualTime*1.2+t.x*.007)*3;poly([[-6,0],[5,0],[sway+7,-65],[sway+1,-94],[-2,-65]],'#4a6851');line(-1,0,sway+3,-77,'#a4ac6a',2);for(let j=0;j<7;j++){const a=j*TAU/7,xx=Math.cos(a)*27+sway,yy=-82+Math.sin(a)*16;ellipse(xx,yy,24,14,j%2?'#356e56':'#42896a');poly([[sway,-78],[xx-17,yy+3],[xx,yy-11],[xx+18,yy+4]],j%2?'#43866a':'#599975');line(sway,-76,xx+10,yy,'#a0b77855',1);}for(let j=0;j<3;j++){const x=sway-18+j*16;ctx.beginPath();ctx.moveTo(x,-76);ctx.quadraticCurveTo(x+12+Math.sin(visualTime+j)*3,-42,x-2,-14);ctx.strokeStyle='#6e935e';ctx.lineWidth=1.5;ctx.stroke();}ctx.restore();}
-function drawObstacles(){if(L.lost){const g=ctx.createLinearGradient(0,520,0,790);g.addColorStop(0,'#183039e8');g.addColorStop(1,'#34545188');ctx.fillStyle=g;ctx.fillRect(3420,520,880,270);}if(L.theme==='jungle'){const cave=ctx.createLinearGradient(0,590,0,885);cave.addColorStop(0,'#0c242cef');cave.addColorStop(1,'#224441b0');ctx.fillStyle=cave;ctx.fillRect(1810,590,1180,295);for(let x=1830;x<2990;x+=120){poly([[x,595],[x+50,640],[x+90,800],[x+30,875],[x-15,720]],'#50746724');}}for(const o of obstacles){if(o.x+o.w<camera-100||o.x>camera+vw+100)continue;const g=ctx.createLinearGradient(o.x,o.y,o.x,o.y+o.h);g.addColorStop(0,'#718875');g.addColorStop(.25,'#435f58');g.addColorStop(1,'#213c40');ctx.fillStyle=g;ctx.fillRect(o.x,o.y,o.w,o.h);for(let x=o.x;x<o.x+o.w;x+=47){const w=Math.min(47,o.x+o.w-x),k=Math.sin(x*1.8);poly([[x,o.y+8],[x+w,o.y+15],[x+w*.6,o.y+o.h-9],[x,o.y+o.h]],k>0?'#80917a22':'#071e302b');line(x+8,o.y+35,x+w*.5,o.y+o.h-18,'#15323866',1);line(x,o.y+o.h-1,x+w,o.y+o.h-1,'#0d2934',3);}ctx.fillStyle='#698d59';ctx.fillRect(o.x,o.y,o.w,9);for(let x=o.x;x<o.x+o.w-16;x+=22){const h=3+Math.abs(Math.sin(x*2.8))*10;poly([[x,o.y+2],[x+8,o.y-h],[x+21,o.y+2]],'#6a8858');}line(o.x,o.y,o.x+o.w,o.y,'#b5bb76',2);if(o.type==='roof'){for(let x=o.x+15;x<o.x+o.w;x+=105){const n=25+Math.sin(x)*17;line(x,o.y+o.h,x+Math.sin(visualTime+x)*3,o.y+o.h+n,'#5c8061',2);glow(x,o.y+o.h+8,22,'#68ebdf24');ellipse(x,o.y+o.h+3,2,2,'#9bf5df');}for(let x=o.x+30;x<o.x+o.w-30;x+=95+Math.sin(x)*20)drawJungleTree({x,y:o.y,s:.65+(Math.sin(x*2)+1)*.25});label('GROTTPASSAGE',o.x-85,o.y+o.h+60,'#a7ead8',12);label('→',o.x-70,o.y+o.h+88,'#a7ead8',24);}else{for(let j=0;j<4;j++)ellipse(o.x+o.w*.25+j*12,o.y+15,22,8,'#5a845d');}}if(L.theme==='jungle'){for(let x=1650;x<3050;x+=140){glow(x,ground(x)-4,30,'#68cfa914');ellipse(x,ground(x)-3,2,2,'#9decd0');}if(heli.x>1750&&heli.x<3050&&heli.y>590){glow(heli.x,heli.y,170,'#c5e2b60c');}}}
+// --- Obstacle art -------------------------------------------------------------------------
+// Every obstacle used to be the same tinted box with a green hat, whatever it was. Each type is
+// now drawn as the thing it is: spires taper and catch the sunrise down one edge, spans have a
+// deck and a truss you pass under, overhangs hang with weight and drip stalactites. Shapes are
+// hashed off the world position, so they vary along the valley but never flicker between frames.
+const hash=n=>{const s=Math.sin(n*127.1)*43758.5453;return s-Math.floor(s)};
+const ROCK={lit:'#7d9384',mid:'#4c6a63',dark:'#28464b',deep:'#16303a',rim:'#c8b98a',
+ moss:'#6d8f58',mossLit:'#8fae63',snow:'#dfeae4',shadow:'#0a1f2a3d'};
+
+function groundShadow(o){const g=ground(o.x+o.w*.5);ellipse(o.x+o.w*.5,g+2,o.w*.62,7,ROCK.shadow);}
+
+// A rock spire: tapered, faceted, lit from the sunrise side, capped with whatever grows up there.
+function drawPillar(o){
+ const x=o.x,y=o.y,w=o.w,h=o.h,r1=hash(x),r2=hash(x+7),r3=hash(x+19);
+ const topW=w*(.5+r1*.22),lean=(r2-.5)*w*.3,tx=x+(w-topW)*.5+lean;
+ groundShadow(o);
+ // Body: a single tapered silhouette, then a lighter face down the sunrise edge.
+ const body=[[x,y+h],[x+w,y+h],[tx+topW,y+9],[tx+topW*.68,y],[tx+topW*.24,y+4],[tx,y+12]];
+ poly(body,ROCK.dark);
+ poly([[x+w*.52,y+h],[x+w,y+h],[tx+topW,y+9],[tx+topW*.68,y],[x+w*.62,y+h*.42]],ROCK.mid);
+ poly([[x+w*.78,y+h],[x+w,y+h],[tx+topW,y+11],[x+w*.86,y+h*.5]],ROCK.lit);
+ // Strata: a few near-horizontal breaks that follow the taper.
+ for(let i=1;i<5;i++){
+  const t=i/5,ly=y+12+(h-12)*t,inset=w*.5*(1-t)*.55;
+  line(x+inset*(1-t)+w*.06,ly,x+w-inset*.4,ly+w*.05*(hash(x+i*13)-.5),ROCK.deep+'',1);
+ }
+ // A hard rim on the lit edge is what makes it read as stone rather than a shape.
+ line(tx+topW,y+10,x+w,y+h,ROCK.rim+'4a',2);
+ // Cap: moss and a few tufts, snow on the tallest spires.
+ const capped=h>250;
+ poly([[tx,y+12],[tx+topW*.24,y+4],[tx+topW*.68,y],[tx+topW,y+9],[tx+topW*.8,y+17],[tx+topW*.3,y+19]],capped?ROCK.snow:ROCK.moss);
+ if(!capped)for(let i=0;i<4;i++){const px=tx+topW*(.15+i*.22),ph=4+hash(x+i*31)*7;
+  poly([[px,y+8],[px+3,y+8-ph],[px+7,y+9]],ROCK.mossLit);}
+ // Scree gathering at the foot.
+ for(let i=0;i<5;i++){const sx=x+w*(.1+hash(x+i*53)*.85),s=2+hash(x+i*17)*4;
+  poly([[sx-s,y+h],[sx,y+h-s*1.3],[sx+s,y+h]],i%2?ROCK.mid:ROCK.dark);}
+}
+
+// A span you fly under: deck on top, truss below, and the underside is what matters.
+function drawSpan(o){
+ const x=o.x,y=o.y,w=o.w,h=o.h,deck=Math.min(20,h*.42),base=y+h;
+ const WOOD={dark:'#3b3a33',mid:'#5d5647',lit:'#7d7259',iron:'#2c3c42'};
+ // Deck slab with plank ends.
+ ctx.fillStyle=WOOD.mid;ctx.fillRect(x,y,w,deck);
+ ctx.fillStyle=WOOD.lit;ctx.fillRect(x,y,w,3);
+ for(let px=x+6;px<x+w-4;px+=14)line(px,y+3,px,y+deck,WOOD.dark,1);
+ line(x,y+deck,x+w,y+deck,WOOD.dark,2);
+ // Railing.
+ for(let px=x+8;px<x+w-6;px+=26)line(px,y,px,y-9,WOOD.dark,2);
+ line(x,y-9,x+w,y-9,WOOD.dark,2);
+ // Truss: alternating diagonals with vertical hangers, the shape you read the gap from.
+ const th=base-(y+deck);
+ for(let px=x;px<x+w-1;px+=34){
+  const pw=Math.min(34,x+w-px);
+  line(px,y+deck,px+pw,base,WOOD.iron,2);
+  line(px+pw,y+deck,px,base,WOOD.iron,2);
+  line(px,y+deck,px,base,WOOD.dark,2);
+ }
+ line(x,base,x+w,base,WOOD.iron,3);
+ // Piers at both ends, dropping toward the valley floor.
+ for(const px of [x+3,x+w-9]){
+  const foot=ground(px+3);
+  ctx.fillStyle=WOOD.dark;ctx.fillRect(px,y,6,Math.max(h+12,foot-y));
+  ctx.fillStyle=WOOD.iron;ctx.fillRect(px-3,foot-6,12,6);
+ }
+}
+
+// An overhang: heavy above, ragged and dripping below, dark enough to read as a passage.
+function drawOverhang(o){
+ const x=o.x,y=o.y,w=o.w,h=o.h,lip=y+h;
+ const g=ctx.createLinearGradient(0,y,0,lip);
+ g.addColorStop(0,'#16303a');g.addColorStop(.55,'#22414a');g.addColorStop(1,'#2f5259');
+ ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
+ // Ragged lower edge: the silhouette that tells you where the ceiling really is.
+ const teeth=[];
+ for(let px=x;px<=x+w;px+=26)teeth.push([px,lip-hash(px)*7]);
+ poly([[x,lip-14],...teeth,[x+w,lip-14]],'#2f5259');
+ for(let px=x+14;px<x+w-8;px+=34){
+  const d=6+hash(px*1.7)*16;
+  poly([[px-4,lip],[px+4,lip],[px+hash(px)*3,lip+d]],'#27484f');
+ }
+ // Moss fringe and a little light bleeding along the lip.
+ for(let px=x+8;px<x+w-6;px+=17){const t=3+hash(px+5)*6;
+  poly([[px,lip],[px+4,lip+t],[px+9,lip]],'#4d7350');}
+ line(x,lip,x+w,lip,'#87a58a55',2);
+ // Weight above: strata and a mossy crown so it does not float.
+ for(let i=1;i<4;i++){const ly=y+h*i/5;line(x+w*.04,ly,x+w*.96,ly+(hash(x+i)-.5)*8,'#12283199',1);}
+ ctx.fillStyle=ROCK.moss;ctx.fillRect(x,y,w,7);
+ for(let px=x+10;px<x+w-14;px+=24){const ph=4+hash(px*2.3)*9;
+  poly([[px,y+3],[px+4,y+3-ph],[px+10,y+4]],ROCK.mossLit);}
+}
+
+// A boulder: rounded, faceted, sitting in the terrain rather than pasted on it.
+function drawBoulder(o){
+ const x=o.x,y=o.y,w=o.w,h=o.h,cx=x+w*.5,cy=y+h*.5;
+ groundShadow(o);
+ const pts=[];
+ for(let i=0;i<9;i++){const a=i/9*TAU,k=.74+hash(x+i*23)*.26;
+  pts.push([cx+Math.cos(a)*w*.5*k,cy+Math.sin(a)*h*.5*k]);}
+ poly(pts,ROCK.dark);
+ poly(pts.slice(0,5),ROCK.mid);
+ poly([pts[7],pts[8],pts[0],[cx,cy]],ROCK.lit);
+ line(pts[8][0],pts[8][1],pts[0][0],pts[0][1],ROCK.rim+'40',2);
+ for(let i=0;i<3;i++){const t=(i+1)/4;
+  line(x+w*.12,y+h*t,x+w*.88,y+h*t+(hash(x+i*11)-.5)*6,'#13303a80',1);}
+}
+
+function drawObstacles(){if(L.lost){const g=ctx.createLinearGradient(0,520,0,790);g.addColorStop(0,'#183039e8');g.addColorStop(1,'#34545188');ctx.fillStyle=g;ctx.fillRect(3420,520,880,270);}if(L.theme==='jungle'){const cave=ctx.createLinearGradient(0,590,0,885);cave.addColorStop(0,'#0c242cef');cave.addColorStop(1,'#224441b0');ctx.fillStyle=cave;ctx.fillRect(1810,590,1180,295);for(let x=1830;x<2990;x+=120){poly([[x,595],[x+50,640],[x+90,800],[x+30,875],[x-15,720]],'#50746724');}}for(const o of obstacles){
+  if(o.x+o.w<camera-100||o.x>camera+vw+100)continue;
+  if(o.type==='pillar')drawPillar(o);
+  else if(o.type==='bridge')drawSpan(o);
+  else if(o.type==='roof')drawOverhang(o);
+  else drawBoulder(o);
+  if(o.type==='roof'){
+   // Lantern line under the lip: the passage should invite you in, then feel narrow.
+   for(let x=o.x+40;x<o.x+o.w-20;x+=110){glow(x,o.y+o.h+9,20,'#7fe8d31e');ellipse(x,o.y+o.h+4,2,2,'#a6f0dc');}
+   label('GROTTPASSAGE',o.x-85,o.y+o.h+60,'#a7ead8',12);label('→',o.x-70,o.y+o.h+88,'#a7ead8',24);
+  }
+ }if(L.theme==='jungle'){for(let x=1650;x<3050;x+=140){glow(x,ground(x)-4,30,'#68cfa914');ellipse(x,ground(x)-3,2,2,'#9decd0');}if(heli.x>1750&&heli.x<3050&&heli.y>590){glow(heli.x,heli.y,170,'#c5e2b60c');}}}
 function drawTree(t){if(L.theme==='jungle'){drawJungleTree(t);return;}const p=palette();ctx.save();ctx.translate(t.x,t.y+2);ctx.scale(t.s,t.s);ctx.transform(1,0,Math.sin(visualTime*1.4+t.x*.03)*.014+wind*.001,1,0,0);ellipse(4,1,24,4,'#09273335');poly([[-4,0],[4,0],[2,-70],[-2,-70]],'#4b5c4e');line(-1,-5,-1,-57,'#8e987055',1);for(let j=0;j<5;j++){const y=-24-j*13,w=28-j*4.5,tip=y-28;const pts=[[-w,y+10],[-w*.66,y+2],[-w*.8,y+1],[-w*.42,y-10],[0,tip],[w*.43,y-9],[w*.77,y],[w*.62,y+2],[w,y+10],[w*.35,y+7],[0,y+13],[-w*.4,y+8]];poly(pts,p.tree);poly([[0,tip],[w*.43,y-9],[w*.77,y],[w*.62,y+2],[w,y+10],[w*.35,y+7],[0,y+13]],p.treeLight);line(0,tip+8,-w*.55,y+1,'#acc5992c',1);if(p.snow)poly([[-w*.6,y],[0,tip],[w*.48,y-1],[w*.2,y-4],[0,y+1],[-w*.18,y-5]],'#d6e4d8');}ctx.restore();}
 
 function drawRock(t){const p=palette();ctx.save();ctx.translate(t.x,t.y);ctx.scale(t.s,t.s);ellipse(4,1,26,5,'#071e274a');poly([[-22,0],[-17,-18],[3,-29],[24,-12],[29,2]],p.facet);poly([[-17,-18],[3,-29],[6,-6],[-22,0]],p.edge);poly([[3,-29],[24,-12],[6,-6]],p.top);line(-11,-15,3,-12,'#c5c9a84a',1);line(3,-12,6,-6,'#122d3d66',1);poly([[-18,-5],[-9,-11],[4,-7],[-1,-3]],p.snow?'#dce8dd':'#6c8e6c');ctx.restore()}
@@ -442,13 +560,52 @@ function lostSnapshot(){return{cp:lost.cp,secret:lost.secret,hp:heli.hp,fuel:hel
 function startLost(fresh=false){const previous=readLost(),saved=fresh?null:previous;loadLevel(7);lost={active:true,cp:clamp(saved?.snapshot?.cp||0,0,lostPads.length-1),hold:0,best:previous?.best||0,crashes:saved?.crashes||0,total:saved?.total||0,secret:!!saved?.snapshot?.secret,returning:false,returnService:new Set(),snapshot:saved?.snapshot||null,lastSave:0,reason:'',recordShown:saved?.best||0};restoreLostPosition();if(!lost.snapshot)lost.snapshot=lostSnapshot();saveLost();$('modalTag').textContent='THE LOST VALLEY · LÅNGFÄRD';$('modalTitle').textContent=saved?.snapshot?'En gång till.':'Varje meter räknas.';$('modalBody').innerHTML='<p>Flyg till Rescue Beacon, vinscha upp två personer och ta er hela vägen hem till Eagle Base.</p><p>Landa lugnt på markerade reläplattor för att spara en checkpoint. Klippkanter är fasta. Träd och dimma är bakgrund. Gruvan är en kortare, trängre väg; flyg över berget om du vill ha mer utrymme.</p><p>Vinden går i samma 14-sekundersmönster varje försök. En krasch tar dig till senaste sparade checkpoint. Efter räddningen måste du fortfarande flyga hem.</p><p>En fyra gånger längre dal med elva landningsstationer längs vägen. Ta pauser, fyll på bränsle och fortsätt från din senaste checkpoint.</p>';document.body?.classList.add('lostMode');updateHUD();}
 function restoreLostPosition(){const p=lostPads[lost.cp];heli.x=p.x;heli.y=ground(p.x)-30.8;heli.vx=heli.vy=heli.angle=heli.av=heli.bank=0;heli.hp=clamp(lost.snapshot?.hp||100,45,100);heli.fuel=clamp(lost.snapshot?.fuel||100,55,100);heli.rockets=8;heli.flares=4;heli.landed=true;heli.airborne=false;zoom=1;applyView();camera=clamp(heli.x-vw*.43,0,L.length-vw);cameraY=heli.y-vh*.5;}
 function retryLost(){const old={...lost};loadLevel(7,false);lost={...old,active:true,hold:0,returning:false,returnService:new Set(),secret:!!old.snapshot?.secret,lastSave:0};time=0;restoreLostPosition();document.body?.classList.add('lostMode');$('menu').hidden=true;begin();radio('Tyngdkraften vann den här ronden. Vi försöker igen.',4);}
-function crashLost(reason){if(mode!=='playing')return;lost.crashes++;lost.reason=reason||lost.reason||'Hård kontakt med terrängen.';saveLost();mode='failed';clearInput();$('mobile').hidden=true;explode(heli.x,heli.y,.8);const jokes=['Helikoptern har upptäckt tyngdkraften.','Det där var nästan en landning. Känslomässigt.','Mycket nära. Berget höll inte med.','Du har låst upp: ett nytt försök.'];showModal('KRASCH · '+lostPads[lost.cp].name,jokes[(lost.crashes-1)%jokes.length],'<p>'+lost.reason+'</p><p>Bästa framsteg: '+Math.round(lost.best/L.beacon*100)+' % till fyren · '+lost.crashes+' krascher.</p>',[{text:'FÖRSÖK IGEN',primary:true,run:retryLost},{text:'HUVUDMENY',run:toMenu}]);}
-function completeLost(){lost.completed=true;saveLost();mode='lostDone';clearInput();$('mobile').hidden=true;AudioState.sfx('rescue');const mins=Math.floor(lost.total/60),secs=Math.floor(lost.total%60);showModal('THE LOST VALLEY · KLARAD','Du klarade det.','<p>Vi är inte helt säkra på hur. Men alla är hemma.</p><div class="results"><div><b>'+mins+':'+String(secs).padStart(2,'0')+'</b><span>TOTAL TID</span></div><div><b>'+lost.crashes+'</b><span>KRASCHER</span></div><div><b>'+heli.delivered+'</b><span>RÄDDADE</span></div></div><p>Hemligheter: '+(lost.secret?'1 / 1':'0 / 1')+' · Senaste checkpoint: '+lostPads[lost.cp].name+'</p><p>Du klarade både räddningen och hemresan.</p>',[{text:'ETT NYTT FÖRSÖK',primary:true,run:()=>startLost(true)},{text:'HUVUDMENY',run:toMenu}]);}
+function crashLost(reason){if(mode!=='playing')return;lost.crashes++;lost.reason=reason||lost.reason||'Hård kontakt med terrängen.';saveLost();mode='failed';clearInput();$('mobile').hidden=true;explode(heli.x,heli.y,.8);const jokes=['Helikoptern har upptäckt tyngdkraften.','Det där var nästan en landning. Känslomässigt.',
+  'Mycket nära. Berget höll inte med.','Du har låst upp: ett nytt försök.',
+  'Utmärkt flygning. Fruktansvärt resmål.','Träden är fortfarande obesegrade.',
+  'Nytt rekord: snabbaste vägen tillbaka till checkpointen.','Åtminstone såg ingen det där.',
+  'Räddningsuppdraget räddar tillfälligt sig självt.','Den landningen var mer ett förslag.',
+  'Marken var där hela tiden. Den sa bara ingenting.','Rotorn hade en idé. Berget hade en annan.',
+  'Tekniskt sett flög du. En kort stund.','Fysiken noterade det där.',
+  'Du är officiellt för långt in för att sluta nu.'];showModal('KRASCH · '+lostPads[lost.cp].name,jokes[(lost.crashes-1)%jokes.length],'<p>'+lost.reason+'</p><p>Bästa framsteg: '+Math.round(lost.best/L.beacon*100)+' % till fyren · '+lost.crashes+' krascher.</p>',[{text:'FÖRSÖK IGEN',primary:true,run:retryLost},{text:'HUVUDMENY',run:toMenu}]);}
+function completeLost(){
+ lost.completed=true;saveLost();mode='lostDone';clearInput();$('mobile').hidden=true;AudioState.sfx('rescue');
+ const mins=Math.floor(lost.total/60),secs=String(Math.floor(lost.total%60)).padStart(2,'0');
+ const stats='<div class="results"><div><b>'+mins+':'+secs+'</b><span>TOTAL TID</span></div>'+
+  '<div><b>'+lost.crashes+'</b><span>KRASCHER</span></div>'+
+  '<div><b>'+heli.delivered+'</b><span>RÄDDADE</span></div></div>';
+ showModal('THE LOST VALLEY · HEMMA','Du klarade det.',
+  '<p>Skidorna är på betong. Rotorn varvar ner. Elva rastplatser, '+lost.crashes+
+  ' krascher och hela vägen tillbaka.</p>'+stats+
+  '<p>Hemligheter: '+(lost.secret?'1 / 1':'0 / 1')+'</p>'+
+  '<p>Ops vill säga en sak innan du kliver ur.</p>',
+  [{text:'LYSSNA',primary:true,run:lostEpilogue}]);
+}
+// The turn: everything you just did was real, and none of it was necessary.
+function lostEpilogue(){
+ const mins=Math.floor(lost.total/60),secs=String(Math.floor(lost.total%60)).padStart(2,'0');
+ showModal('OPS / EFTERSNACK','Om fyren.',
+  '<p>Nödsignalen du flög elva kilometer för var en schemalagd testsändning. Väderstationen '+
+  'skickar en varannan tisdag. Vi glömde nämna det.</p>'+
+  '<p>De två du vinschade upp heter Ann-Sofie och Pelle. De är tekniker. De var där för att '+
+  'serva stationen.</p><p>De hade bil.</p>'+
+  '<p>De följde med för att du såg ut att ha ansträngt dig.</p>'+
+  '<p><b>'+mins+':'+secs+'</b> i luften. <b>'+lost.crashes+'</b> krascher. '+
+  (lost.secret?'En hemlighet hittad. ':'')+'Noll liv i fara.</p>'+
+  '<p>Ann-Sofie undrar förresten om du kan flyga tillbaka.</p>'+
+  '<p>De glömde verktygslådan.</p>',
+  [{text:'EN GÅNG TILL',primary:true,run:()=>startLost(true)},{text:'HUVUDMENY',run:toMenu}]);
+}
 function updateLost(dt){if(!L.lost||!lost.active)return;lost.total+=dt;lost.lastSave+=dt;const best=Math.min(L.beacon,heli.x);if(best>lost.best){lost.best=best;if(best>lost.recordShown+350){lost.recordShown=best;popup(heli.x,heli.y-105,'NYTT BÄSTA · '+Math.round(best/L.beacon*100)+' %','#bcebd7');}}
  if(!lost.secret&&Math.hypot(heli.x-3940,heli.y-685)<70){lost.secret=true;popup(heli.x,heli.y-80,'GRUVANS HEMLIGHET');radio('Dålig idé. Utmärkt resultat.',4);}
  if(heli.carrying===people.length&&!lost.returning){lost.returning=true;radio('Alla ombord. Helikoptern räknas också som alla. Ta er hem.',6);}
  const pad=lostPads.findIndex(p=>Math.abs(heli.x-p.x)<p.w*.38);const safe=pad>=0&&heli.landed&&Math.abs(heli.vx)<12&&Math.abs(heli.angle)<.16;
- lost.hold=safe?lost.hold+dt:0;if(safe&&lost.hold>1.1){if(!lost.returning&&pad>lost.cp){lost.cp=pad;heli.hp=Math.min(100,heli.hp+35);heli.fuel=100;heli.rockets=8;lost.snapshot=lostSnapshot();saveLost();popup(heli.x,heli.y-80,'CHECKPOINT SPARAD');radio('Nu får du misslyckas från en lite bättre plats.',5);AudioState.sfx('rescue');}if(lost.returning&&pad>0&&!lost.returnService.has(pad)){lost.returnService.add(pad);heli.hp=Math.min(100,heli.hp+20);heli.fuel=100;radio('Snabb service. Hemresan återstår.',3);}}
+ lost.hold=safe?lost.hold+dt:0;if(safe&&lost.hold>1.1){if(!lost.returning&&pad>lost.cp){lost.cp=pad;heli.hp=Math.min(100,heli.hp+35);heli.fuel=100;heli.rockets=8;lost.snapshot=lostSnapshot();saveLost();popup(heli.x,heli.y-80,'CHECKPOINT SPARAD');
+   const praise=['Nu får du misslyckas från en lite bättre plats.','Sparat. Berget vet att du var här.',
+    'Snyggt. Det såg nästan avsiktligt ut.','Checkpoint. Andas. Sedan fortsätter det.',
+    'Du är officiellt bättre än den förra piloten.','Sparat. Ingen behöver få veta hur det gick till.',
+    'Bra landning. Dalen är fortfarande längre än du tror.'];
+   radio(praise[pad%praise.length],5);AudioState.sfx('rescue');}if(lost.returning&&pad>0&&!lost.returnService.has(pad)){lost.returnService.add(pad);heli.hp=Math.min(100,heli.hp+20);heli.fuel=100;radio('Snabb service. Hemresan återstår.',3);}}
  if(lost.lastSave>4){saveLost();lost.lastSave=0;}
  $('lostStatus').hidden=false;const progress=Math.round(lost.best/L.beacon*100);$('lostStatus').textContent=(lost.returning?'← HEM TILL EAGLE BASE':'→ RESCUE BEACON')+' · '+lostPads[lost.cp].name+' · BÄSTA '+progress+' % · '+lost.crashes+' KRASCHER';$('tip').textContent=heli.x>3350&&heli.x<4350?(heli.y>510?'GRUVAN · HÅLL CENTRUM · AKTA TAK OCH VÄGGAR':'SÄKRA VÄGEN · FLYG ÖVER BERGET'):lostWind().label+' · LÄR DIG RYTMEN · LANDA VID RELÄPLATTORNA';
 }
@@ -472,7 +629,7 @@ function startTraining(){loadLevel(0);school={active:true,kind:'basic',stage:0,h
 function updateTraining(dt){$('retrySchool').hidden=!school.active;$('skipSchool').hidden=!school.active;if(school.active&&school.kind&&school.kind!=='basic'){updateDrill(dt);return;}if(!school.active)return;const h=heli;let inside=false;if(school.stage===0)inside=Math.abs(h.x-390)<90&&h.y<490&&!h.landed;else if(school.stage===1)inside=Math.abs(h.x-553)<60&&Math.abs(h.y-455)<48&&Math.abs(h.vx)<22&&Math.abs(h.vy)<20;else inside=school.cleanLanding&&h.landed&&Math.abs(h.x-553)<55&&Math.abs(h.vx)<12&&Math.abs(h.angle)<.15;school.hold=inside?school.hold+dt:Math.max(0,school.hold-dt*2);if(school.hold>=(school.stage===1?2:.7)){school.stage++;school.hold=0;AudioState.sfx('rescue');if(school.stage===3){school.active=false;time=0;$('retrySchool').hidden=true;save.schoolComplete=true;persist();$('skipSchool').hidden=true;radio('Grundflygningen klar! Fler övningar finns under FLYGSKOLA i menyn. Du kan också fortsätta räddningsuppdraget här.',7);popup(h.x,h.y-75,'GRUNDFLYGNING KLAR');}else radio(school.stage===1?'Bra lyft. Flyg till nästa ruta. Motluta tidigt för att stanna.':'Fin kontroll. Sänk dig långsamt över landningsplattan.',5);}}
 function updatePrecision(dt){const h=heli,steady=!h.landed&&Math.abs(h.vx)<22&&Math.abs(h.vy)<18&&Math.abs(h.angle)<.16;precision.hold=steady?Math.min(4,precision.hold+dt):0;if(Math.abs(h.vx)>100)precision.fast=true;const target=people.find(p=>p.status==='waiting'&&Math.abs(p.x-h.x)<85&&p.y-h.y>60&&p.y-h.y<240);if(target&&steady&&precision.fast){precision.approach+=dt;if(precision.approach>=1.5&&!precision.targets.has(target.homeX)){precision.targets.add(target.homeX);score+=100;popup(h.x,h.y-80,'KONTROLLERAD INFLYGNING +100');AudioState.sfx('attach');precision.fast=false;}}else precision.approach=0;}
 function drawFlightGuides(){if(school.active&&school.kind&&school.kind!=='basic'){drawDrillGuide();}if(school.active&&(!school.kind||school.kind==='basic')){const x=school.stage===0?390:553,y=school.stage===2?ground(x)-31:455,w=school.stage===0?150:110,h=school.stage===2?44:85;ctx.fillStyle='#8ceac810';ctx.fillRect(x-w/2,y-h/2,w,h);ctx.strokeStyle='#a5efcf';ctx.lineWidth=2;ctx.setLineDash([8,6]);ctx.strokeRect(x-w/2,y-h/2,w,h);ctx.setLineDash([]);label(['LYFT HIT','MOTLUTA · HÅLL POSITION','LANDA HÄR'][school.stage],x,y-h/2-15,'#caf5de',12);line(x-w/2,y+h/2+9,x-w/2+w*clamp(school.hold/(school.stage===1?2:.7),0,1),y+h/2+9,'#bdf6d7',4);}if(mode==='playing'&&!heli.landed&&(keys.KeyE||heli.ropeTarget)){const progress=clamp(precision.hold/1.2,0,1);line(heli.x-32,heli.y-80,heli.x+32,heli.y-80,'#183848',4);line(heli.x-32,heli.y-80,heli.x-32+64*progress,heli.y-80,'#b8ead0',4);label(progress===1?'LUGN VINSCHNING':'STABILISERA FÖR PRECISION',heli.x,heli.y-90,'#d0eadb',10);}}
-function drawHazardGuides(){let nearest=Infinity;for(const o of obstacles){const dx=heli.x-clamp(heli.x,o.x,o.x+o.w),dy=heli.y-clamp(heli.y,o.y,o.y+o.h),distance=Math.hypot(dx,dy);nearest=Math.min(nearest,distance);if(o.x>camera+vw+100||o.x+o.w<camera-100)continue;ctx.strokeStyle=distance<145?'#f4bf79dd':'#c8b78266';ctx.lineWidth=distance<145?2:1;ctx.strokeRect(o.x,o.y,o.w,o.h);if(distance<145){const x=clamp(heli.x,o.x,o.x+o.w),y=clamp(heli.y,o.y,o.y+o.h);glow(x,y,24,'#ffc57935');}}if(nearest<130&&mode==='playing'){label('KLIPPA NÄRA · AKTA ROTORN',heli.x,heli.y-155,'#ffd198',12);}}
+function drawHazardGuides(){let nearest=Infinity;for(const o of obstacles){const dx=heli.x-clamp(heli.x,o.x,o.x+o.w),dy=heli.y-clamp(heli.y,o.y,o.y+o.h),distance=Math.hypot(dx,dy);nearest=Math.min(nearest,distance);if(o.x>camera+vw+100||o.x+o.w<camera-100)continue;if(distance<145){const x=clamp(heli.x,o.x,o.x+o.w),y=clamp(heli.y,o.y,o.y+o.h);glow(x,y,24,'#ffc57935');}}if(nearest<130&&mode==='playing'){label('KLIPPA NÄRA · AKTA ROTORN',heli.x,heli.y-155,'#ffd198',12);}}
 function updateTutorial(){if(coarse||touchFlight){$('tip').textContent='EN SIDA: LUTA · BÅDA: LYFT · SLÄPP: SJUNK · SVEP: VÄND · VINSCH: TRYCK AV/PÅ';return;}if(school.active&&school.kind&&school.kind!=='basic'){$('tip').textContent=drillHint();return;}if(school.active){$('tip').textContent=[coarse?'1/3 · HÅLL BÅDA SKÄRMHALVORNA · LYFT TILL RUTAN':'1/3 · HÅLL W · LYFT TILL DEN TURKOSA RUTAN','2/3 · FLYG ÅT HÖGER · MOTLUTA OCH STANNA I RUTAN I 2 SEKUNDER','3/3 · SÄNK LYFTKRAFTEN · LANDA MJUKT PÅ DEN MARKERADE PLATTAN'][school.stage];return;}if(L.theme==='jungle'){$('tip').textContent=heli.x>1600&&heli.x<3050?'GROTTPASSAGE · TURKOSA LAMPOR VISAR VÄGEN · HJÄLP MED H / STABILISERA':'FÖLJ RAVINEN NERÅT · HÅLL ROTORN FRI FRÅN KLIPPORNA';return;}if(level!==0){$('tip').textContent=cargo&&cargo.status==='attached'?'Tung last: håll extra lyftkraft. Sänk varsamt över leveransplattan.':'';return;}if(time<12&&heli.x<650)$('tip').textContent=coarse?'För spaken uppåt för att lyfta. Luta åt sidan för att få fart.':'Håll W för att lyfta. A / D lutar helikoptern och bygger upp fart.';else if(time<32)$('tip').textContent='Släpp spaken: du glider vidare. Motluta för att bromsa.';else if(people.some(p=>p.status==='waiting'&&Math.abs(p.x-heli.x)<220))$('tip').textContent=coarse?'Stabilisera. Håll VINSCH för att sänka. Släpp när personen har fäst.':'H stabiliserar höjden. Håll E för att sänka vinschen, släpp för att hissa.';else if(save.depthMode&&Math.abs(heli.z)>14)$('tip').textContent='Återgå till uppdragsdjupet med J / CENTRERA för att rädda och landa vid basen.';else if(time<70)$('tip').textContent='Motluta för att bromsa. Q byter riktning. Flyg varsamt med last.';else $('tip').textContent='';}
 function objectiveTarget(){if(heli.ropeTarget?.kind==='person')return{x:heli.x,text:'SLÄPP VINSCHEN · HISSA UPP'};if(cargo?.status==='attached')return{x:cargo.to,text:'LEVERERA GENERATORN'};if(cargo?.status==='waiting')return{x:cargo.x,text:'HÄMTA GENERATORN'};const waiting=people.filter(p=>p.status==='waiting').sort((a,b)=>Math.abs(a.x-heli.x)-Math.abs(b.x-heli.x));if(waiting.length)return{x:waiting[0].x,text:'NÖDSIGNAL'};if(L.clear){const e=enemies.filter(e=>e.hp>0).sort((a,b)=>Math.abs(a.x-heli.x)-Math.abs(b.x-heli.x))[0];if(e)return{x:e.x,text:'LUFTVÄRN'}}if(boss?.hp>0)return{x:boss.x,text:'HEAVY GUNSHIP'};return{x:390,text:'HEM TILL BASEN'};}
 // A one-line map of the whole valley: every relay pad, the beacon at the far end, and where
