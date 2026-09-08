@@ -58,7 +58,7 @@ addEventListener('resize',resize);if(window.visualViewport)visualViewport.addEve
 function seeded(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}}
 function ground(x){x=clamp(x,0,L.length);const i=Math.min(terrain.length-2,Math.floor(x/40));return lerp(terrain[i],terrain[i+1],(x-i*40)/40)}
 function makeWorld(){const rng=seeded(L.seed);obstacles=[];if(L.lost)obstacles=[
-  {x:1940,w:280,h:90,type:'bridge',gap:175},{x:3420,y:245,w:880,h:275,type:'roof'},
+  {x:1940,w:280,h:90,type:'bridge',gap:190},{x:3420,y:245,w:880,h:275,type:'roof'},
   {x:3680,y:715,w:100,h:75,type:'rock'},{x:4090,y:520,w:90,h:70,type:'rock'},
   {x:4530,y:340,w:110,h:270,type:'pillar'},{x:5490,y:170,w:140,h:250,type:'rock'},
   {x:5780,y:475,w:100,h:165,type:'rock'},
@@ -66,33 +66,41 @@ function makeWorld(){const rng=seeded(L.seed);obstacles=[];if(L.lost)obstacles=[
   {x:7300,w:70,h:250,type:'pillar'},{x:7760,w:70,h:190,type:'pillar'},
   {x:8180,w:80,h:290,type:'pillar'},{x:8620,w:70,h:220,type:'pillar'},
   // FLODDALEN -> pad 11300. Low arches. Under is quick, over costs height and time.
-  {x:9800,w:240,h:80,type:'bridge',gap:165},{x:10360,w:260,h:90,type:'bridge',gap:150},
-  {x:10820,w:200,h:80,type:'bridge',gap:155},
+  {x:9800,w:240,h:80,type:'bridge',gap:180},{x:10360,w:260,h:90,type:'bridge',gap:178},
+  {x:10820,w:200,h:80,type:'bridge',gap:180},
   // FJALLSTATIONEN -> pad 13600. A slot: something above and something below, hold the line.
-  {x:12100,w:90,h:230,type:'pillar'},{x:12420,w:420,h:150,type:'roof',gap:185},
-  {x:12960,w:90,h:190,type:'pillar'},{x:13060,w:260,h:110,type:'bridge',gap:150},
+  {x:12100,w:90,h:230,type:'pillar'},{x:12420,w:420,h:150,type:'roof',gap:195},
+  {x:12960,w:90,h:190,type:'pillar'},{x:13060,w:260,h:110,type:'bridge',gap:178},
   // LANGA PASSET -> pad 15800. The signature corridor: a long ceiling with teeth under it.
-  {x:14300,w:600,h:200,type:'roof',gap:210},{x:14520,w:80,h:70,type:'pillar'},
-  {x:14780,w:80,h:65,type:'pillar'},{x:15080,w:440,h:170,type:'roof',gap:195},
-  {x:15300,w:80,h:75,type:'pillar'},
+  {x:14300,w:600,h:200,type:'roof',gap:230},{x:14520,w:80,h:55,type:'pillar'},
+  {x:14780,w:80,h:50,type:'pillar'},{x:15080,w:440,h:170,type:'roof',gap:225},
+  {x:15300,w:80,h:52,type:'pillar'},
   // NORRA DALEN -> pad 18100. Open sky, tall pillars, and the wind decides when you may pass.
   {x:16600,w:80,h:330,type:'pillar'},{x:17140,w:80,h:270,type:'pillar'},
   {x:17660,w:80,h:360,type:'pillar'},
   // DEN OVERGIVNA BASEN -> pad 20400. Hangars and a mast; the gaps are square and unforgiving.
-  {x:18900,w:340,h:130,type:'bridge',gap:150},{x:19420,w:100,h:330,type:'pillar'},
-  {x:19760,w:280,h:140,type:'roof',gap:170},{x:20080,w:90,h:240,type:'pillar'},
+  {x:18900,w:340,h:130,type:'bridge',gap:180},{x:19420,w:100,h:330,type:'pillar'},
+  {x:19760,w:280,h:140,type:'roof',gap:185},{x:20080,w:90,h:240,type:'pillar'},
   // FYRLEDEN -> pad 22800. Everything at once, but still fair.
-  {x:21300,w:80,h:290,type:'pillar'},{x:21580,w:400,h:150,type:'roof',gap:160},
-  {x:22020,w:80,h:250,type:'pillar'},{x:22260,w:260,h:110,type:'bridge',gap:155},
+  {x:21300,w:80,h:290,type:'pillar'},{x:21580,w:400,h:150,type:'roof',gap:182},
+  {x:22020,w:80,h:250,type:'pillar'},{x:22260,w:260,h:110,type:'bridge',gap:180},
   // SISTA ANFLYGNINGEN -> the beacon. The narrowest gate on the route, with the most to lose.
-  {x:23600,w:90,h:310,type:'pillar'},{x:23920,w:380,h:190,type:'roof',gap:150},
-  {x:24380,w:90,h:270,type:'pillar'},{x:24700,w:260,h:100,type:'bridge',gap:155}
+  {x:23600,w:90,h:310,type:'pillar'},{x:23920,w:380,h:190,type:'roof',gap:176},
+  {x:24380,w:90,h:270,type:'pillar'},{x:24500,w:260,h:100,type:'bridge',gap:178}
  ];if(L.theme==='jungle')obstacles=[{x:1810,y:425,w:1180,h:165,type:'roof'},{x:3230,y:405,w:110,h:205,type:'pillar'},{x:4420,y:360,w:140,h:250,type:'pillar'}];terrain=[];for(let x=0;x<=L.length+80;x+=40){let y=570+Math.sin(x*.002+L.seed)*58+Math.sin(x*.0062)*25+Math.sin(x*.015)*7;if(x<660)y=610;else if(x<850)y=lerp(610,y,(x-660)/190);if(L.cargo){const d=Math.abs(x-L.cargo.x),e=Math.abs(x-L.cargo.to);if(d<120)y=600;if(e<180)y=578}if(L.theme==='jungle'&&x>=1000&&x<=3580){if(x<1600)y=lerp(610,885,(x-1000)/600);else if(x<3020)y=885;else y=lerp(885,610,(x-3020)/560);}if(L.lost)y=lostTerrain(x,y);terrain.push(y)}for(const o of obstacles){
-  if(o.type==='pillar'){o.y=ground(o.x+o.w*.5)-o.h;continue}
+  if(o.type==='pillar'){
+   o.y=ground(o.x+o.w*.5)-o.h;
+   o.topW=o.w*(.5+hash(o.x)*.22);
+   o.tx=o.x+(o.w-o.topW)*.5+(hash(o.x+7)-.5)*o.w*.3;
+   continue;
+  }
+  // Stalactites hang into the passage, so they are part of the ceiling, not decoration below
+  // it. The authored clearance is measured to their tips.
+  if(o.type==='roof')o.drip=20;
   if(o.gap===undefined)continue;
   let highest=Infinity;
   for(let x=o.x;x<=o.x+o.w;x+=40)highest=Math.min(highest,ground(x));
-  o.y=highest-o.gap-o.h;
+  o.y=highest-o.gap-o.h-(o.drip||0);
  }scenery=[];for(let x=690;x<L.length-120;x+=40+rng()*95){scenery.push({x,y:ground(x),s:.7+rng()*1.1,type:rng()>.26?'tree':'rock',variant:rng(),depth:rng()})}if(L.theme==='jungle')for(const t of scenery)if(t.x>1810&&t.x<2990){t.type='rock';t.s*=.65;}clouds=Array.from({length:12},()=>({x:rng()*5000,y:45+rng()*240,w:130+rng()*190,a:.04+rng()*.07}));}
 function newHeli(){return{x:390,z:0,vz:0,y:ground(390)-30.8,vx:0,vy:0,angle:0,av:0,collective:0,dir:1,hp:100,fuel:100,rockets:8,flares:4,heat:0,overheated:false,landed:true,airborne:false,rotor:0,spool:.25,turn:0,yaw:0,yawTarget:0,cyclic:0,bank:0,hitCd:0,rope:0,ropeAngle:0,ropeV:0,ropeNodes:[],ropeMount:null,ropeTension:0,ropeSupport:1,ropeTarget:null,carrying:0,delivered:0,hookX:390,hookY:ground(390)-4,dents:[],hoverY:0,brake:false,nearGround:0,compression:0};}
 function loadLevel(i,play=true){lost.active=false;$('lostStatus').hidden=true;document.body?.classList.remove('lostMode');$('skipSchool').hidden=true;$('retrySchool').hidden=true;school={active:false,stage:0,hold:0};precision={hold:0,approach:0,fast:false,targets:new Set(),landings:new Set()};level=i;L={...levels[i],guns:[],boss:false,clear:false};if(!L.lost){L.brief='Flyg varsamt, hjälp besättningen och återvänd till basen.';L.objective=L.cargo?'Leverera lasten och rädda alla till basen.':'Rädda alla och återvänd till basen.';}makeWorld();heli=newHeli();time=0;score=0;zoom=1;applyView();for(const k in hudCache)delete hudCache[k];buildValleyRail();camera=0;cameraY=heli.y-vh*.5;shake=damageFlash=0;gunCd=rocketCd=flareCd=muzzle=0;unload=service=0;wind=0;missionKills=landings=crashHits=perfectPickups=0;hoverMode=false;tutorial=0;radioTimer=0;warningTimer=0;combo=0;comboTimer=0;hudTimer=0;
@@ -111,7 +119,21 @@ function gearPoint(x,y,z,yaw,bank=0){const p=projectHeliPoint(x,y,z,yaw,bank),rz
 function gearSupport(){const yaw=heli.turn>0?heli.yaw:(heli.dir===1?0:Math.PI),c=Math.cos(heli.angle),sn=Math.sin(heli.angle);let support=Infinity;for(const x of [-37,38])for(const z of [-25,25]){const p=gearPoint(x,30.8-heli.compression,z,yaw,heli.bank),px=p.x*c-p.y*sn,py=p.x*sn+p.y*c;support=Math.min(support,ground(heli.x+px)-py);}return support;}
 function segmentBox(ax,ay,bx,by,o,pad=0){let lo=0,hi=1;for(const [a,b,mn,mx] of [[ax,bx,o.x-pad,o.x+o.w+pad],[ay,by,o.y-pad,o.y+o.h+pad]]){const d=b-a;if(Math.abs(d)<1e-8){if(a<mn||a>mx)return false;}else{const t=(mn-a)/d,u=(mx-a)/d;lo=Math.max(lo,Math.min(t,u));hi=Math.min(hi,Math.max(t,u));if(lo>hi)return false;}}return true;}
 function blocked(ax,ay,bx,by){return obstacles.some(o=>segmentBox(ax,ay,bx,by,o));}
-function collideObstacles(dt){for(const o of obstacles){for(const [lx,ly,r] of [[0,0,25],[35,0,14],[-70,-12,10],[-75,-47,5],[75,-47,5],[0,-47,5]]){const p=rotateLocal(lx*(heli.dir===1?1:-1),ly),nx=clamp(p.x,o.x,o.x+o.w),ny=clamp(p.y,o.y,o.y+o.h);let dx=p.x-nx,dy=p.y-ny,d=Math.hypot(dx,dy);if(d>=r)continue;if(d<.001){const gaps=[p.x-o.x,o.x+o.w-p.x,p.y-o.y,o.y+o.h-p.y],m=Math.min(...gaps),j=gaps.indexOf(m);dx=j===0?-1:j===1?1:0;dy=j===2?-1:j===3?1:0;d=-m;}else{dx/=d;dy/=d;}const impact=Math.max(0,-heli.vx*dx-heli.vy*dy);heli.x+=dx*(r-d+.1);heli.y+=dy*(r-d+.1);if(impact>0){heli.vx+=dx*impact*1.15;heli.vy+=dy*impact*1.15;}heli.av*=.6;if(impact>18){if(L.lost)lost.reason='Rotorn eller skrovet slog i klippan. Bromsa tidigare och håll mer avstånd.';hitHeli(Math.min(42,6+impact*.16));addDent(lx,ly,clamp(impact/95,.2,1));smoke(p.x,p.y,6,.3,'#aeae89');}break;}}}
+// Measured against the rendered sprite: cabin, skids, tail boom, fin, tail rotor, and the main
+// rotor as a line of small circles, because a spinning disc is exactly as solid as it looks.
+const HULL=[
+ [ 47,-14,15],[ 26,-10,23],[ -3,-10,26],[-30,-13,21],   // nose, cabin, rear cabin
+ [  0, 20,11],[-30, 21,10],[ 30, 21,10],                // skids
+ [ 30,-37,11],[  0,-37,12],[-24,-37,11],                // cabin roof
+ [-52,-22,13],[-72,-24,12],[-92,-25,11],[-105,-24,7],   // tail boom and tail rotor
+ [-50,-60,12],                                          // vertical fin
+ [-88,-47,6],[-59,-47,6],[-30,-47,6],[0,-47,6],[30,-47,6],[59,-47,6],[88,-47,6]];
+function collideObstacles(dt){for(const o of obstacles){
+  // Skip anything the craft cannot reach this tick before testing nineteen points against it.
+  if(o.x-125>heli.x||o.x+o.w+125<heli.x)continue;for(const [lx,ly,r] of HULL){const p=rotateLocal(lx*(heli.dir===1?1:-1),ly);
+   let ax=o.x,bx=o.x+o.w;
+   if(o.type==='pillar'){const t=clamp((p.y-o.y)/o.h,0,1);ax=lerp(o.tx,o.x,t);bx=lerp(o.tx+o.topW,o.x+o.w,t);}
+   const nx=clamp(p.x,ax,bx),ny=clamp(p.y,o.y,o.y+o.h+(o.drip||0));let dx=p.x-nx,dy=p.y-ny,d=Math.hypot(dx,dy);if(d>=r)continue;if(d<.001){const gaps=[p.x-o.x,o.x+o.w-p.x,p.y-o.y,o.y+o.h-p.y],m=Math.min(...gaps),j=gaps.indexOf(m);dx=j===0?-1:j===1?1:0;dy=j===2?-1:j===3?1:0;d=-m;}else{dx/=d;dy/=d;}const impact=Math.max(0,-heli.vx*dx-heli.vy*dy);heli.x+=dx*(r-d+.1);heli.y+=dy*(r-d+.1);if(impact>0){heli.vx+=dx*impact*1.15;heli.vy+=dy*impact*1.15;}heli.av*=.6;if(impact>18){if(L.lost)lost.reason='Rotorn eller skrovet slog i klippan. Bromsa tidigare och håll mer avstånd.';hitHeli(Math.min(42,6+impact*.16));addDent(lx,ly,clamp(impact/95,.2,1));smoke(p.x,p.y,6,.3,'#aeae89');}break;}}}
 function weapon(){const yaw=heli.turn>0?heli.yaw:(heli.dir===1?0:Math.PI),p=projectHeliPoint(54,13,18,yaw,heli.bank),tip=projectHeliPoint(80,13,18,yaw,heli.bank),c=Math.cos(heli.angle),sn=Math.sin(heli.angle),dx=(tip.x-p.x)*c-(tip.y-p.y)*sn,dy=(tip.x-p.x)*sn+(tip.y-p.y)*c,n=Math.hypot(dx,dy)||1;return{x:heli.x+p.x*c-p.y*sn,y:heli.y+p.x*sn+p.y*c,dx:dx/n,dy:dy/n};}
 function segmentDist(ax,ay,bx,by,x,y){let dx=bx-ax,dy=by-ay;const t=clamp(((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy||1),0,1);return Math.hypot(ax+dx*t-x,ay+dy*t-y)}
 // Record where the airframe was struck. Nearby hits deepen an existing dent instead of
@@ -325,7 +347,7 @@ function groundShadow(o){const g=ground(o.x+o.w*.5);ellipse(o.x+o.w*.5,g+2,o.w*.
 // A rock spire: tapered, faceted, lit from the sunrise side, capped with whatever grows up there.
 function drawPillar(o){
  const x=o.x,y=o.y,w=o.w,h=o.h,r1=hash(x),r2=hash(x+7),r3=hash(x+19);
- const topW=w*(.5+r1*.22),lean=(r2-.5)*w*.3,tx=x+(w-topW)*.5+lean;
+ const topW=o.topW,tx=o.tx;
  groundShadow(o);
  // Body: a single tapered silhouette, then a lighter face down the sunrise edge.
  const body=[[x,y+h],[x+w,y+h],[tx+topW,y+9],[tx+topW*.68,y],[tx+topW*.24,y+4],[tx,y+12]];
@@ -389,7 +411,7 @@ function drawOverhang(o){
  for(let px=x;px<=x+w;px+=26)teeth.push([px,lip-hash(px)*7]);
  poly([[x,lip-14],...teeth,[x+w,lip-14]],'#2f5259');
  for(let px=x+14;px<x+w-8;px+=34){
-  const d=6+hash(px*1.7)*16;
+  const d=4+hash(px*1.7)*(o.drip||20);
   poly([[px-4,lip],[px+4,lip],[px+hash(px)*3,lip+d]],'#27484f');
  }
  // Moss fringe and a little light bleeding along the lip.

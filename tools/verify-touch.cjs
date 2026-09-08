@@ -3,7 +3,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert');const {createCa
 const kv={};const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classes:new Set(),get classList(){const c=this.classes;return{toggle:(k,on)=>{on===undefined?(c.has(k)?c.delete(k):c.add(k)):(on?c.add(k):c.delete(k))},add:k=>c.add(k),remove:k=>c.delete(k),contains:k=>c.has(k)}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
 const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:()=>element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,testArt:{day:await loadImage(root+'/alpine-day.webp'),night:await loadImage(root+'/alpine-night.webp'),jungle:await loadImage(root+'/jungle.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
-code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
 
 const emit=(id,type,pointerId,x,y=300)=>{for(const f of element(id).listeners[type]||[])f({pointerId,clientX:x,clientY:y,preventDefault(){}})};
 a.startLost(true);a.begin();
@@ -80,7 +80,7 @@ a.startLost(true);a.begin();
  // Hanging obstacles must leave their stated clearance against the highest ground they cross.
  for(const o of obs.filter(o=>o.gap!==undefined)){
   let min=Infinity;
-  for(let x=o.x;x<=o.x+o.w;x+=10)min=Math.min(min,a.ground(x)-(o.y+o.h));
+  for(let x=o.x;x<=o.x+o.w;x+=10)min=Math.min(min,a.ground(x)-(o.y+o.h+(o.drip||0)));
   assert(min>=CRAFT+40,'Under-passage at x='+o.x+' leaves only '+min.toFixed(0));
   assert(min<=o.gap+2,'Under-passage at x='+o.x+' is looser than authored: '+min.toFixed(0)+' vs '+o.gap);
  }
@@ -88,7 +88,7 @@ a.startLost(true);a.begin();
  // A pillar standing inside a roof would wall the low route off completely.
  for(const r of obs.filter(o=>o.type==='roof'))
   for(const p of obs.filter(o=>o.type==='pillar'&&o.x+o.w>r.x&&o.x<r.x+r.w)){
-   const slot=p.y-(r.y+r.h);
+   const slot=p.y-(r.y+r.h+(r.drip||0));
    assert(slot>=CRAFT+40,'Roof at '+r.x+' and pillar at '+p.x+' leave a '+slot.toFixed(0)+' slot');
   }
 
@@ -96,7 +96,7 @@ a.startLost(true);a.begin();
  // into the vertical. Every gate has to admit the craft at the full nose-down attitude, or the
  // level is asking for something it does not allow.
  {
-  const pts=[[0,0,25],[35,0,14],[-70,-12,10],[-75,-47,5],[75,-47,5],[0,-47,5]];
+  const pts=a.HULL;
   const extent=ang=>{let lo=Infinity,hi=-Infinity;
    for(const [px,py,r] of pts){const ry=px*Math.sin(ang)+py*Math.cos(ang);lo=Math.min(lo,ry-r);hi=Math.max(hi,ry+r)}
    return hi-lo};
@@ -105,7 +105,7 @@ a.startLost(true);a.begin();
   let tightest=Infinity,where=null;
   for(const o of obs.filter(o=>o.gap!==undefined)){
    let min=Infinity;
-   for(let x=o.x;x<=o.x+o.w;x+=10)min=Math.min(min,a.ground(x)-(o.y+o.h));
+   for(let x=o.x;x<=o.x+o.w;x+=10)min=Math.min(min,a.ground(x)-(o.y+o.h+(o.drip||0)));
    if(min<tightest){tightest=min;where=o.x}
   }
   assert(tightest>tilted,'Gate at x='+where+' is '+tightest.toFixed(0)+' but a fully tilted craft needs '+tilted.toFixed(0));
@@ -119,6 +119,16 @@ a.startLost(true);a.begin();
    assert(d>=120,'Obstacle at x='+o.x+' crowds '+p.name+', only '+d.toFixed(0)+' away');
   }
   assert(p.x<beacon,'Pad '+p.name+' sits beyond the beacon');
+ }
+}
+{
+ // Nothing may stand where the beacon rescue is flown. The tail boom reaches 112 units behind
+ // the craft, and that only went unnoticed while the boom had no collision behind it.
+ const obs=a.getObstacles(),people=a.get().people;
+ const back=Math.min(...a.HULL.map(p=>p[0]-p[2])),front=Math.max(...a.HULL.map(p=>p[0]+p[2]));
+ for(const person of people)for(const o of obs){
+  const from=person.x+back-30,to=person.x+front+30;
+  assert(o.x+o.w<from||o.x>to,'Obstacle at x='+o.x+' stands in the rescue hover at '+Math.round(person.x));
  }
 }
 console.log('PASS: valley geometry is flyable, pads are approachable, no dead stretches');
@@ -324,6 +334,18 @@ a.repairDents(1);
 assert.equal(h.dents.length,0,'A full repair clears the hull');
 assert.equal(h.rotorHurt,0,'and trues the rotor');
 a.render();
+{
+ // The hull model is what the player sees hit things, so it has to match the drawn craft.
+ const span=(i)=>[Math.min(...a.HULL.map(p=>p[i]-p[2])),Math.max(...a.HULL.map(p=>p[i]+p[2]))];
+ const [x0,x1]=span(0),[y0,y1]=span(1);
+ // Measured off the rendered sprite: x -111..92, y -78..30.
+ assert(x0<=-105&&x0>=-118,'The tail boom is covered, model reaches '+x0);
+ assert(x1>=88&&x1<=100,'The rotor tip is covered, model reaches '+x1);
+ assert(y0<=-66&&y0>=-84,'The mast and fin are covered, model reaches '+y0);
+ assert(y1>=28&&y1<=38,'The skids are covered, model reaches '+y1);
+ assert(a.HULL.filter(p=>p[1]===-47).length>=6,'The rotor is a line of points, not two tips');
+}
+console.log('PASS: the hull model matches the craft that is drawn');
 console.log('PASS: impacts mark the hull where they land, and repairs clear them');
 
 // You should watch the crash before the game tells you about it. The old code cut straight to

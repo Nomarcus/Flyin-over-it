@@ -33,6 +33,37 @@ This pass reworked the camera and the HUD.
   and the combat buttons. `drawMap` is gone.
 - Narrow screens drop the aboard counter and move bearing/range to a tab under the rail.
 
+## Hit boxes match the art
+
+Measured by rendering the craft alone on a transparent canvas and reading back which pixels were
+actually painted. The collision model was six circles covering the cabin and nothing else:
+
+    painted craft with no collision behind it     75%
+    tail boom reaching past its collision          31 units
+    rotor and mast reaching past                   26 units
+    nose reaching past                             12 units
+
+So a tail boom or a rotor blade could pass visibly through rock and nothing happened. The hull
+is now nineteen circles fitted to the measured silhouette: cabin, roof, skids, tail boom, fin,
+tail rotor, and the main rotor as a line of points, because a spinning disc is exactly as solid
+as it looks. Painted-but-uncovered is down to 34%, all of it interior, and the outline agrees
+within 6 units everywhere. A test asserts the model still reaches the tail, the rotor tip, the
+mast and the skids, so it cannot quietly shrink back.
+
+Obstacles were rectangles drawn around art that had stopped being rectangular. Pillar shapes are
+now decided once when the world is built and read by both the art and the collision, so the
+taper is the same in each; and stalactites count as part of the ceiling, with the authored
+clearance measured to their tips rather than to the mass above them.
+
+Consequences, all caught by the existing tests rather than by eye:
+
+- An accurate hull is 26 units taller at every attitude and 158 units tall at the control limit,
+  so every gate was opened to admit it. The valley must never ask for an attitude it allows.
+- The final span reached into the beacon rescue hover. That only worked while the tail boom had
+  no collision behind it. It moved, and a test now keeps the rescue hover clear of obstacles.
+- The long corridor is roomier than it was. Threading it is less tight, which is what an honest
+  hull costs.
+
 ## Crashing
 
 A crash used to cut straight to the modal: the craft was destroyed off-screen and you were told
@@ -211,7 +242,7 @@ of flying it. A test asserts every gate admits the craft at full tilt.
 
 ## Testing
 
-- `npm test` — 17 suites covering touch input, checkpoints, rescue and return, portrait fill,
+- `npm test` — 18 suites covering touch input, checkpoints, rescue and return, portrait fill,
   altitude zoom-out framing, zoom saturation, the instrument rail contents and its
   write-on-change behaviour, the valley rail (including pads lighting as checkpoints bank),
   the hull/fuel/height alert states, and the new guides under every draw state.
