@@ -1,3 +1,21 @@
+# Expedition graphics overhaul
+
+A substantial visual pass on top of 5f14e00, preserving Claude's flight model.
+
+- Three new hand-painted 1536 × 1024 panoramas: sunrise Alps, moonlit snow and tropical limestone jungle. Optimized WebP assets total about 1.1 MB.
+- Ivory and rescue-orange helicopter, projected cabin cross, pilot, cockpit reflections, engine louvers, tail lettering and matching crash panel paint. Existing airframe silhouette, gear geometry, turn projection and damage deformation retained.
+- New sedimentary terrain, mineral weathering, layered conifer crowns, detailed scenery rocks, rescue station materials, rooftop panels, illuminated landing pads, safety clothing and cargo colours.
+- Warm expedition menu and panel finish; no layout, input or hit-area changes.
+- Versioned script/style URLs and distinct asset names avoid retaining old art after deployment.
+
+Validation: full simulation suite and opaque obstacle-edge tests pass. Exact source comparison outside named drawing functions and image URLs confirms no change to physics, camera, controls, collision shapes, missions, saves or audio. Native Canvas scenes and close-up helicopter renders reviewed.
+
+![Actual game rendering](expedition-preview.webp)
+
+Generated using the built-in image tool. Assets live at dist/alpine-expedition.webp, dist/night-expedition.webp and dist/jungle-expedition.webp. Direction: premium full-bleed hand-painted side-view wilderness, deep atmospheric perspective, detailed natural stone, open sky above, no text, UI, aircraft or characters. Alpine sunrise: warm snow ridges, teal shadows, glacial lake; night: moonlit peaks, subtle turquoise aurora; jungle: emerald limestone valleys, thin waterfalls and turquoise river.
+
+---
+
 # Graphics review — Claude baseline b1717ad
 
 Rendering-only pass. Flight, controls, camera, level data, collision geometry, damage, crash simulation and HUD are unchanged. Source comparison verified every byte outside the terrain/obstacle art block.
