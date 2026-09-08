@@ -1,6 +1,7 @@
 {
   "name": "flyin-over-it",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "A mobile-friendly helicopter rescue game: free flight, touch and gyro controls, and one long open valley.",
   "private": true,
   "scripts": {
     "test": "node tools/verify-touch.cjs"

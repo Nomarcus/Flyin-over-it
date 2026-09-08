@@ -1,4 +1,4 @@
-# Current state — 8 September 2026
+# Version 1.0.0 — 8 September 2026
 
 Flyin Over It is a 2D/2.5D rescue flight game. The flight model is unchanged: damped spring,
 rotor response, air resistance, two-hand touch control, gyro input and a segmented winch rope.
@@ -48,9 +48,18 @@ This pass reworked the camera and the HUD.
 
 - `npm test` — 11 suites covering touch input, checkpoints, rescue and return, portrait fill,
   altitude zoom-out framing, zoom saturation, the instrument rail contents and its
-  write-on-change behaviour, the valley rail, and the new guides under every draw state.
+  write-on-change behaviour, the valley rail (including pads lighting as checkpoints bank),
+  the hull/fuel/height alert states, and the new guides under every draw state.
+- The test DOM stub now has a real classList, so every class the game toggles is observable
+  rather than silently discarded.
+- Render cost measured against the previous version with interleaved A/B runs on a software
+  canvas, taking minimums: level with it at ground level (the cached vignette pays for the new
+  instruments) and +2.3 ms at altitude, where four times as much world is drawn. Chromium held
+  60 fps at 844x390 and 390x844, both at ground level and zoomed out.
 - Verified in Chromium at 1440x900, 844x390 and 390x844: no page errors, and all four entry
   points (Lost Valley, campaign, flight school, jungle) run clean through pause and settings.
+- Full-screen gradients (vignette, ground wash, ladder strip) are built once per viewport size
+  instead of once per frame.
 - Physical iPhone gyro and full-route human playtesting remain outstanding.
 
 `verify-game.cjs` was removed: it asserted combat and depth behaviour the game no longer has

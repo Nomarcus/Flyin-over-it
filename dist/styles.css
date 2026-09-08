@@ -151,3 +151,9 @@
  #hud #radio span{font-size:8px;margin-bottom:3px}
  #hud #radio b{font-size:10px;line-height:1.4}
 }
+
+/* The canvas already honours prefers-reduced-motion via reduceMotion; match it in the HUD. */
+@media(prefers-reduced-motion:reduce){
+ #hud #warning{animation:none}
+ #valleyRail .mark,#valleyRail .pad,#hud #tip,#hud #radio,#compactHud u,.gauge em{transition:none}
+}

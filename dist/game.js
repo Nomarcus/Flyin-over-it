@@ -44,6 +44,10 @@ function clearInput(){flightTouches.clear();for(const id of ['flightLeft','fligh
 // Zooming scales the world box and the draw scale by the same factor, so the on-screen
 // rectangle never moves: only how much world fits inside it changes.
 function applyView(){vw=baseVw*zoom;vh=baseVh*zoom;scale=baseScale/zoom;}
+const screenGrads={key:'',map:{}};
+function screenGrad(name,make){const key=Math.round(vw)+'x'+Math.round(vh);
+ if(screenGrads.key!==key){screenGrads.key=key;screenGrads.map={}}
+ return screenGrads.map[name]??=make();}
 function resize(){dpr=Math.min(2,window.devicePixelRatio||1);const top=54,bottom=78,available=Math.max(120,innerHeight-top-bottom);
  // Landscape keeps the tuned 400-unit world height. Taller-than-wide screens grow the
  // world box instead of shrinking the picture, so portrait fills the screen too.
@@ -331,16 +335,17 @@ function hookNote(text,x,y,color,align){ctx.font='600 11px ui-monospace,monospac
 function drawFlightInstruments(){
  if(mode!=='playing')return;
  const gy=ground(heli.x),agl=gy-heli.y-30.8;
- if(!heli.landed&&agl<70&&agl>-12){const k=clamp(1-agl/70,0,1),band=vh*.22;
-  const g=ctx.createLinearGradient(0,vh,0,vh-band);
-  g.addColorStop(0,'rgba(233,192,124,'+(.22*k).toFixed(3)+')');g.addColorStop(1,'rgba(233,192,124,0)');
-  ctx.fillStyle=g;ctx.fillRect(0,vh-band,vw,band);}
+ if(!heli.landed&&agl<70&&agl>-12){const band=vh*.22;
+  // One full-strength gradient, faded by alpha, so proximity costs no gradient rebuild.
+  ctx.save();ctx.globalAlpha=clamp(1-agl/70,0,1);
+  ctx.fillStyle=screenGrad('groundWash',()=>{const g=ctx.createLinearGradient(0,vh,0,vh-vh*.22);
+   g.addColorStop(0,'rgba(233,192,124,.22)');g.addColorStop(1,'rgba(233,192,124,0)');return g});
+  ctx.fillRect(0,vh-band,vw,band);ctx.restore();}
  const x=vw-Math.max(20,vw*.028),top=vh*.10,bottom=vh*.88,zero=gy-30.8-cameraY,step=50/.45;
  ctx.save();
  // A faint backing strip so the scale reads against bright sky as well as dark rock.
- const strip=ctx.createLinearGradient(x-vw*.055,0,x+vw*.014,0);
- strip.addColorStop(0,'rgba(8,26,35,0)');strip.addColorStop(1,'rgba(8,26,35,.34)');
- ctx.fillStyle=strip;ctx.fillRect(x-vw*.055,top-vh*.03,vw*.069,bottom-top+vh*.06);
+ ctx.fillStyle=screenGrad('ladderStrip',()=>{const g=ctx.createLinearGradient(x-vw*.055,0,x+vw*.014,0);
+  g.addColorStop(0,'rgba(8,26,35,0)');g.addColorStop(1,'rgba(8,26,35,.34)');return g});ctx.fillRect(x-vw*.055,top-vh*.03,vw*.069,bottom-top+vh*.06);
  line(x,top,x,bottom,'#c6dcdc55',Math.max(1,vh*.003));
  ctx.font='600 '+Math.round(clamp(vh*.026,9,13))+'px ui-monospace,monospace';ctx.textAlign='right';
  for(let i=Math.max(0,Math.ceil((zero-bottom)/step));i<=Math.floor((zero-top)/step);i++){
@@ -360,7 +365,7 @@ function drawWeather(){if(['storm','snow'].includes(L.theme)){const snowing=L.th
 function atDepth(z,draw){if(!z){draw();return;}const k=1-z*.0017,c=camera+vw*.5;ctx.save();ctx.translate(c,230-z*.28);ctx.scale(k,k);ctx.translate(-c,-230);draw();ctx.restore();}
 function drawDepthFloor(){if(!save.depthMode)return;for(const z of [100,0,-100])atDepth(z,()=>{ctx.setLineDash([9,15]);ctx.strokeStyle=z===0?'#d9d9a947':'#b4d3d323';ctx.lineWidth=1;ctx.beginPath();for(let x=camera-100;x<camera+vw+200;x+=20){const y=ground(x);x===camera-100?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.stroke();ctx.setLineDash([])});}
 function drawPlayer(){atDepth(heli.z,()=>{for(const p of people)if(p.status==='attached')drawPerson(p);if(cargo?.status==='attached')drawCargo();drawHeli();});}
-function render(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#06151f';ctx.fillRect(0,0,innerWidth,innerHeight);ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.save();ctx.beginPath();ctx.rect(0,0,vw,vh);ctx.clip();if(!reduceMotion){ctx.translate(Math.sin(visualTime*53)*shake*.25,Math.cos(visualTime*47)*shake*.20)}drawBackdrop();ctx.save();ctx.translate(-camera,-cameraY);drawTerrain();drawGroundDetail();if(heli.z>14)drawPlayer();for(const s of scenery){if(s.x<camera-100||s.x>camera+vw+100)continue;s.type==='tree'?drawTree(s):drawRock(s)}drawBase();drawOutpost();drawObstacles();drawLost();drawHazardGuides();drawFlightGuides();for(const e of enemies)if(e.x>camera-100&&e.x<camera+vw+100)drawEnemy(e);for(const d of debris){if(d.type==='falling'||d.type==='wreck'){poly([[d.x-13*d.s,d.y],[d.x-20*d.s,d.y-15*d.s],[d.x+16*d.s,d.y-20*d.s],[d.x+23*d.s,d.y]],'#3b4c55')}}for(const p of people)if(p.status!=='attached')drawPerson(p);if(cargo?.status!=='attached')drawCargo();if(boss&&boss.hp>0&&boss.x>camera-170&&boss.x<camera+vw+170){ellipse(boss.x,ground(boss.x),70,11,'#071b284d');heliBody(boss.x,boss.y,Math.sin(boss.t*.8)*.07,heli.x<boss.x?-1:1,0,true);}if(heli.z<=14)drawPlayer();drawWinchGuides();drawEffects();ctx.restore();drawWeather();const vg=ctx.createRadialGradient(vw*.5,vh*.45,Math.min(vw,vh)*.3,vw*.5,vh*.5,Math.max(vw,vh)*.7);vg.addColorStop(0,'#00000000');vg.addColorStop(1,'#05152066');ctx.fillStyle=vg;ctx.fillRect(0,0,vw,vh);if(damageFlash>0&&!reduceMotion){ctx.fillStyle=`rgba(206,91,57,${damageFlash})`;ctx.fillRect(0,0,vw,vh)}drawFlightInstruments();ctx.restore();}
+function render(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#06151f';ctx.fillRect(0,0,innerWidth,innerHeight);ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.save();ctx.beginPath();ctx.rect(0,0,vw,vh);ctx.clip();if(!reduceMotion){ctx.translate(Math.sin(visualTime*53)*shake*.25,Math.cos(visualTime*47)*shake*.20)}drawBackdrop();ctx.save();ctx.translate(-camera,-cameraY);drawTerrain();drawGroundDetail();if(heli.z>14)drawPlayer();for(const s of scenery){if(s.x<camera-100||s.x>camera+vw+100)continue;s.type==='tree'?drawTree(s):drawRock(s)}drawBase();drawOutpost();drawObstacles();drawLost();drawHazardGuides();drawFlightGuides();for(const e of enemies)if(e.x>camera-100&&e.x<camera+vw+100)drawEnemy(e);for(const d of debris){if(d.type==='falling'||d.type==='wreck'){poly([[d.x-13*d.s,d.y],[d.x-20*d.s,d.y-15*d.s],[d.x+16*d.s,d.y-20*d.s],[d.x+23*d.s,d.y]],'#3b4c55')}}for(const p of people)if(p.status!=='attached')drawPerson(p);if(cargo?.status!=='attached')drawCargo();if(boss&&boss.hp>0&&boss.x>camera-170&&boss.x<camera+vw+170){ellipse(boss.x,ground(boss.x),70,11,'#071b284d');heliBody(boss.x,boss.y,Math.sin(boss.t*.8)*.07,heli.x<boss.x?-1:1,0,true);}if(heli.z<=14)drawPlayer();drawWinchGuides();drawEffects();ctx.restore();drawWeather();ctx.fillStyle=screenGrad('vignette',()=>{const g=ctx.createRadialGradient(vw*.5,vh*.45,Math.min(vw,vh)*.3,vw*.5,vh*.5,Math.max(vw,vh)*.7);g.addColorStop(0,'#00000000');g.addColorStop(1,'#05152066');return g});ctx.fillRect(0,0,vw,vh);if(damageFlash>0&&!reduceMotion){ctx.fillStyle=`rgba(206,91,57,${damageFlash})`;ctx.fillRect(0,0,vw,vh)}drawFlightInstruments();ctx.restore();}
 const AudioState={ac:null,master:null,rotor:null,rotorGain:null,music:null,nextNote:0,note:0,noise:null,
  init(){if(this.ac){this.ac.resume().catch(()=>{});return;}const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)return;try{this.ac=new Constructor();const a=this.ac;this.master=a.createGain();this.master.gain.value=0;this.master.connect(a.destination);this.music=a.createGain();this.music.gain.value=.65;this.music.connect(this.master);this.rotorGain=a.createGain();this.rotorGain.gain.value=.045;this.rotor=a.createOscillator();this.rotor.type='sawtooth';this.rotor.frequency.value=44;const low=a.createBiquadFilter();low.type='lowpass';low.frequency.value=175;this.rotor.connect(low);low.connect(this.rotorGain);this.rotorGain.connect(this.master);this.rotor.start();const lfo=a.createOscillator(),depth=a.createGain();lfo.frequency.value=17;depth.gain.value=.02;lfo.connect(depth);depth.connect(this.rotorGain.gain);lfo.start();this.noise=a.createBuffer(1,a.sampleRate*.7,a.sampleRate);const data=this.noise.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;this.nextNote=a.currentTime+.25;a.resume().catch(()=>{});this.sync();}catch{this.ac=null;}}
  ,sync(){if(!this.ac)return;const running=mode==='playing';this.master.gain.setTargetAtTime(save.muted||!running?0:.42,this.ac.currentTime,.16);if(running)this.nextNote=Math.max(this.ac.currentTime+.08,this.nextNote);}

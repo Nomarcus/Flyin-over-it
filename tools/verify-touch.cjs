@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');const {createCanvas,loadImage}=require('@napi-rs/canvas');
 (async()=>{
-const kv={};const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classList:{toggle(){},add(){},remove(){}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
+const kv={};const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classes:new Set(),get classList(){const c=this.classes;return{toggle:(k,on)=>{on===undefined?(c.has(k)?c.delete(k):c.add(k)):(on?c.add(k):c.delete(k))},add:k=>c.add(k),remove:k=>c.delete(k),contains:k=>c.has(k)}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
 const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:()=>element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,testArt:{day:await loadImage(root+'/alpine-day.webp'),night:await loadImage(root+'/alpine-night.webp'),jungle:await loadImage(root+'/jungle.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
 code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
@@ -81,10 +81,22 @@ console.log('PASS: altitude zoom-out keeps the valley floor framed');
 a.startLost(true);a.begin();a.updateHUD();
 const rail=id=>nodes[id]?.innerHTML||nodes[id]?.textContent||'';
 assert(/HÖJD/.test(rail('compactAlt')),'Rail shows height above ground');
+// Low hull, low fuel and a low pass each have to raise their own alert.
+h=a.get().heli;h.hp=20;h.fuel=12;h.landed=false;h.y=a.ground(h.x)-40;a.updateHUD();
+assert(nodes.compactHealth.classes.has('alert'),'Critical hull flags the gauge');
+assert(nodes.compactFuel.classes.has('alert'),'Low fuel flags the gauge');
+assert(nodes.compactAlt.classes.has('alert'),'A low pass flags the height');
+assert(/SKROV KRITISKT/.test(nodes.warning.textContent),'Critical hull warns');
+assert(nodes.tip.classes.has('hushed'),'A warning hushes the coaching tip');
+h.hp=100;h.fuel=100;h.y=a.ground(h.x)-400;a.updateHUD();
+assert(!nodes.compactHealth.classes.has('alert')&&!nodes.compactAlt.classes.has('alert'),'Alerts clear again');
+assert(!nodes.tip.classes.has('hushed'),'The tip returns once the warning clears');
 assert(/SKROV/.test(rail('compactHealth'))&&/BRÄNSLE/.test(rail('compactFuel')),'Rail keeps hull and fuel');
 assert(/\d+\s*m/.test(nodes.compactGoal.textContent),'Rail shows range to the objective');
-h=a.get().heli;h.y-=400;a.updateHUD();
-assert(/<b>1[0-9]{2}/.test(nodes.compactAlt.innerHTML),'Height reading tracks the climb: '+rail('compactAlt'));
+const readAlt=()=>Number(nodes.compactAlt.innerHTML.match(/<b>(\d+)/)[1]);
+h=a.get().heli;const before=readAlt();h.y-=400;a.updateHUD();const after=readAlt();
+assert(after>before,'Height reading tracks the climb: '+before+' -> '+after);
+assert(Math.abs((after-before)-180)<3,'Height reads 0.45 m per world unit, got '+(after-before)+' for 400 units');
 console.log('PASS: instrument rail reports hull, fuel, height and range');
 
 // The valley rail is a one-line map of the route: a tick per relay pad plus the beacon and
@@ -98,6 +110,15 @@ h.x=a.get().L.beacon;a.updateHUD();const atBeacon=marker.style.left;
 assert.equal(atStart,'0%','Marker starts at the mouth of the valley');
 assert.equal(atBeacon,'100%','Marker reaches the beacon');
 assert(parseFloat(firstPad.style.left)>=0&&parseFloat(firstPad.style.left)<=100,'Pads sit on the rail');
+// Pads light up only once their checkpoint is banked.
+const pads=railEl.children.slice(0,12);
+assert(pads[0].classes.has('reached'),'Base counts as banked from the start');
+assert(!pads[5].classes.has('reached'),'A pad ahead of the craft stays dark');
+h=a.get().heli;
+for(const x of [1480,3160,4880,6900,9100,11300]){h.x=x;h.y=a.gearSupport();h.vx=h.vy=h.angle=h.av=0;h.landed=true;a.updateLost(1.2);}
+a.updateHUD();
+assert(pads[5].classes.has('reached'),'Landing on a pad lights it up');
+assert(!pads[7].classes.has('reached'),'Pads beyond the last checkpoint stay dark');
 a.loadLevel(0);a.begin();assert.equal(nodes.valleyRail.hidden,true,'Valley rail hides outside the long valley');
 console.log('PASS: valley rail maps pads, beacon and craft position');
 
