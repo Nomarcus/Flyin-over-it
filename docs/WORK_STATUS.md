@@ -33,6 +33,35 @@ This pass reworked the camera and the HUD.
   and the combat buttons. `drawMap` is gone.
 - Narrow screens drop the aboard counter and move bearing/range to a tab under the rail.
 
+## Impact damage
+
+Strikes now leave marks where they land. The collision pass already knew which point of the
+airframe made contact, so that point is stored in airframe coordinates, nose-positive, and the
+mark travels with the panel even after the craft turns around. Nearby hits deepen an existing
+dent rather than stacking decals, and the list is capped, so a long run cannot accumulate
+without bound. Deep dents show soot and bare metal, and the smoke a failing craft trails now
+comes off its worst dent rather than a fixed spot on the tail.
+
+Blade strikes are handled apart: a hit out at the rotor tip bends the disc, which visibly
+wobbles and thins as it turns, rather than painting a dent in the air where the tip was. Every
+mark is clamped to where there is actually hull.
+
+A checkpoint knocks the worst of it out; base service makes the craft new again.
+
+## Background
+
+The far treeline was one row of identical triangles at a fixed 44-unit spacing, which reads as
+a paper cut-out. It is now two bands at different depths with hashed height, width, lean and
+spacing, two-tier conifer silhouettes, and clearings so the row is not a fence. The far band
+barely breathes; the near one sways a little, which is as much motion as a backdrop should ask
+for.
+
+## Signage volume
+
+Turning the in-world signage back on put every sign in the valley on screen at once. Labels now
+fade out with distance from the craft, the landing instruction shows only on the pad being
+approached, and the base placard only when the base is near.
+
 ## Obstacle art
 
 Every obstacle used to be the same tinted box with a green hat, whatever it was, which is why
@@ -164,7 +193,7 @@ of flying it. A test asserts every gate admits the craft at full tilt.
 
 ## Testing
 
-- `npm test` — 15 suites covering touch input, checkpoints, rescue and return, portrait fill,
+- `npm test` — 16 suites covering touch input, checkpoints, rescue and return, portrait fill,
   altitude zoom-out framing, zoom saturation, the instrument rail contents and its
   write-on-change behaviour, the valley rail (including pads lighting as checkpoints bank),
   the hull/fuel/height alert states, and the new guides under every draw state.

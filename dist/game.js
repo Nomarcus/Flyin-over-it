@@ -94,7 +94,7 @@ function makeWorld(){const rng=seeded(L.seed);obstacles=[];if(L.lost)obstacles=[
   for(let x=o.x;x<=o.x+o.w;x+=40)highest=Math.min(highest,ground(x));
   o.y=highest-o.gap-o.h;
  }scenery=[];for(let x=690;x<L.length-120;x+=40+rng()*95){scenery.push({x,y:ground(x),s:.7+rng()*1.1,type:rng()>.26?'tree':'rock',variant:rng(),depth:rng()})}if(L.theme==='jungle')for(const t of scenery)if(t.x>1810&&t.x<2990){t.type='rock';t.s*=.65;}clouds=Array.from({length:12},()=>({x:rng()*5000,y:45+rng()*240,w:130+rng()*190,a:.04+rng()*.07}));}
-function newHeli(){return{x:390,z:0,vz:0,y:ground(390)-30.8,vx:0,vy:0,angle:0,av:0,collective:0,dir:1,hp:100,fuel:100,rockets:8,flares:4,heat:0,overheated:false,landed:true,airborne:false,rotor:0,spool:.25,turn:0,yaw:0,yawTarget:0,cyclic:0,bank:0,hitCd:0,rope:0,ropeAngle:0,ropeV:0,ropeNodes:[],ropeMount:null,ropeTension:0,ropeSupport:1,ropeTarget:null,carrying:0,delivered:0,hookX:390,hookY:ground(390)-4,hoverY:0,brake:false,nearGround:0,compression:0};}
+function newHeli(){return{x:390,z:0,vz:0,y:ground(390)-30.8,vx:0,vy:0,angle:0,av:0,collective:0,dir:1,hp:100,fuel:100,rockets:8,flares:4,heat:0,overheated:false,landed:true,airborne:false,rotor:0,spool:.25,turn:0,yaw:0,yawTarget:0,cyclic:0,bank:0,hitCd:0,rope:0,ropeAngle:0,ropeV:0,ropeNodes:[],ropeMount:null,ropeTension:0,ropeSupport:1,ropeTarget:null,carrying:0,delivered:0,hookX:390,hookY:ground(390)-4,dents:[],hoverY:0,brake:false,nearGround:0,compression:0};}
 function loadLevel(i,play=true){lost.active=false;$('lostStatus').hidden=true;document.body?.classList.remove('lostMode');$('skipSchool').hidden=true;$('retrySchool').hidden=true;school={active:false,stage:0,hold:0};precision={hold:0,approach:0,fast:false,targets:new Set(),landings:new Set()};level=i;L={...levels[i],guns:[],boss:false,clear:false};if(!L.lost){L.brief='Flyg varsamt, hjälp besättningen och återvänd till basen.';L.objective=L.cargo?'Leverera lasten och rädda alla till basen.':'Rädda alla och återvänd till basen.';}makeWorld();heli=newHeli();time=0;score=0;zoom=1;applyView();for(const k in hudCache)delete hudCache[k];buildValleyRail();camera=0;cameraY=heli.y-vh*.5;shake=damageFlash=0;gunCd=rocketCd=flareCd=muzzle=0;unload=service=0;wind=0;missionKills=landings=crashHits=perfectPickups=0;hoverMode=false;tutorial=0;radioTimer=0;warningTimer=0;combo=0;comboTimer=0;hudTimer=0;
  people=L.people.map((x,j)=>({x,y:ground(x)-8,homeX:x,status:'waiting',phase:j*1.7}));enemies=L.guns.map((e,j)=>({...e,y:ground(e.x)-15,hp:e.type==='missile'?55:42,max:e.type==='missile'?55:42,cd:2+j*.7,aim:-Math.PI/2,flash:0,warn:0}));
  cargo=L.cargo?{x:L.cargo.x,y:ground(L.cargo.x)-14,status:'waiting',to:L.cargo.to}:null;
@@ -111,9 +111,24 @@ function gearPoint(x,y,z,yaw,bank=0){const p=projectHeliPoint(x,y,z,yaw,bank),rz
 function gearSupport(){const yaw=heli.turn>0?heli.yaw:(heli.dir===1?0:Math.PI),c=Math.cos(heli.angle),sn=Math.sin(heli.angle);let support=Infinity;for(const x of [-37,38])for(const z of [-25,25]){const p=gearPoint(x,30.8-heli.compression,z,yaw,heli.bank),px=p.x*c-p.y*sn,py=p.x*sn+p.y*c;support=Math.min(support,ground(heli.x+px)-py);}return support;}
 function segmentBox(ax,ay,bx,by,o,pad=0){let lo=0,hi=1;for(const [a,b,mn,mx] of [[ax,bx,o.x-pad,o.x+o.w+pad],[ay,by,o.y-pad,o.y+o.h+pad]]){const d=b-a;if(Math.abs(d)<1e-8){if(a<mn||a>mx)return false;}else{const t=(mn-a)/d,u=(mx-a)/d;lo=Math.max(lo,Math.min(t,u));hi=Math.min(hi,Math.max(t,u));if(lo>hi)return false;}}return true;}
 function blocked(ax,ay,bx,by){return obstacles.some(o=>segmentBox(ax,ay,bx,by,o));}
-function collideObstacles(dt){for(const o of obstacles){for(const [lx,ly,r] of [[0,0,25],[35,0,14],[-70,-12,10],[-75,-47,5],[75,-47,5],[0,-47,5]]){const p=rotateLocal(lx*(heli.dir===1?1:-1),ly),nx=clamp(p.x,o.x,o.x+o.w),ny=clamp(p.y,o.y,o.y+o.h);let dx=p.x-nx,dy=p.y-ny,d=Math.hypot(dx,dy);if(d>=r)continue;if(d<.001){const gaps=[p.x-o.x,o.x+o.w-p.x,p.y-o.y,o.y+o.h-p.y],m=Math.min(...gaps),j=gaps.indexOf(m);dx=j===0?-1:j===1?1:0;dy=j===2?-1:j===3?1:0;d=-m;}else{dx/=d;dy/=d;}const impact=Math.max(0,-heli.vx*dx-heli.vy*dy);heli.x+=dx*(r-d+.1);heli.y+=dy*(r-d+.1);if(impact>0){heli.vx+=dx*impact*1.15;heli.vy+=dy*impact*1.15;}heli.av*=.6;if(impact>18){if(L.lost)lost.reason='Rotorn eller skrovet slog i klippan. Bromsa tidigare och håll mer avstånd.';hitHeli(Math.min(42,6+impact*.16));smoke(p.x,p.y,6,.3,'#aeae89');}break;}}}
+function collideObstacles(dt){for(const o of obstacles){for(const [lx,ly,r] of [[0,0,25],[35,0,14],[-70,-12,10],[-75,-47,5],[75,-47,5],[0,-47,5]]){const p=rotateLocal(lx*(heli.dir===1?1:-1),ly),nx=clamp(p.x,o.x,o.x+o.w),ny=clamp(p.y,o.y,o.y+o.h);let dx=p.x-nx,dy=p.y-ny,d=Math.hypot(dx,dy);if(d>=r)continue;if(d<.001){const gaps=[p.x-o.x,o.x+o.w-p.x,p.y-o.y,o.y+o.h-p.y],m=Math.min(...gaps),j=gaps.indexOf(m);dx=j===0?-1:j===1?1:0;dy=j===2?-1:j===3?1:0;d=-m;}else{dx/=d;dy/=d;}const impact=Math.max(0,-heli.vx*dx-heli.vy*dy);heli.x+=dx*(r-d+.1);heli.y+=dy*(r-d+.1);if(impact>0){heli.vx+=dx*impact*1.15;heli.vy+=dy*impact*1.15;}heli.av*=.6;if(impact>18){if(L.lost)lost.reason='Rotorn eller skrovet slog i klippan. Bromsa tidigare och håll mer avstånd.';hitHeli(Math.min(42,6+impact*.16));addDent(lx,ly,clamp(impact/95,.2,1));smoke(p.x,p.y,6,.3,'#aeae89');}break;}}}
 function weapon(){const yaw=heli.turn>0?heli.yaw:(heli.dir===1?0:Math.PI),p=projectHeliPoint(54,13,18,yaw,heli.bank),tip=projectHeliPoint(80,13,18,yaw,heli.bank),c=Math.cos(heli.angle),sn=Math.sin(heli.angle),dx=(tip.x-p.x)*c-(tip.y-p.y)*sn,dy=(tip.x-p.x)*sn+(tip.y-p.y)*c,n=Math.hypot(dx,dy)||1;return{x:heli.x+p.x*c-p.y*sn,y:heli.y+p.x*sn+p.y*c,dx:dx/n,dy:dy/n};}
 function segmentDist(ax,ay,bx,by,x,y){let dx=bx-ax,dy=by-ay;const t=clamp(((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy||1),0,1);return Math.hypot(ax+dx*t-x,ay+dy*t-y)}
+// Record where the airframe was struck. Nearby hits deepen an existing dent instead of
+// stacking decals, the way a panel keeps taking the same beating.
+function addDent(lx,ly,severity){
+ const d=heli.dents;
+ if(Math.abs(lx)>58&&ly<-38){heli.rotorHurt=Math.min(1,(heli.rotorHurt||0)+severity*.8);lx=rand(-16,16);ly=-31;}
+ lx=clamp(lx,-62,50);ly=clamp(ly,-33,24);
+ for(const k of d)if(Math.hypot(k.x-lx,k.y-ly)<13){k.s=Math.min(1,k.s+severity*.55);return}
+ if(d.length>13)d.shift();
+ d.push({x:lx,y:ly,s:clamp(severity,.18,1),seed:Math.abs(lx*7.3+ly*3.1)%97});
+}
+function repairDents(amount){
+ heli.rotorHurt=Math.max(0,(heli.rotorHurt||0)-amount);
+ for(const k of heli.dents)k.s-=amount;
+ heli.dents=heli.dents.filter(k=>k.s>.08);
+}
 function hitHeli(amount){if(heli.hitCd>0||mode!=='playing')return;heli.hp=clamp(heli.hp-amount,0,100);heli.hitCd=.18;damageFlash=.18;shake=Math.max(shake,5);for(let i=0;i<7;i++)addParticle(heli.x,heli.y,rand(-100,100),rand(-90,90),'#ffd09a',3,.5);AudioState.sfx('hit');if(heli.hp<=0)failMission();}
 function damageEnemy(e,dmg){if(e.hp<=0)return;e.hp-=dmg;e.flash=.12;if(e.hp<=0){e.hp=0;missionKills++;combo=comboTimer>0?combo+1:1;comboTimer=8;const gain=250+Math.min(3,combo-1)*50;score+=gain;popup(e.x,e.y-35,'+'+gain);explode(e.x,e.y,1.15);debris.push({x:e.x,y:e.y,s:1,type:'tank'});if(enemies.every(v=>v.hp<=0)&&L.clear)radio('Korridoren är säkrad. Hämta besättningen och kom hem.');}else{for(let i=0;i<4;i++)addParticle(e.x+rand(-14,14),e.y-10,rand(-60,60),rand(-100,-20),'#efba7c',2,.4)}}
 function fixedUpdate(dt){visualTime+=dt;updateEffects(dt);if(mode!=='playing'){if(mode==='menu'){heli.rotor+=dt*35;heli.y=290+Math.sin(visualTime*.7)*7;heli.x=vw*.72;heli.angle=Math.sin(visualTime*.5)*.025;}return;}time+=dt;radioTimer=Math.max(0,radioTimer-dt);warningTimer-=dt;comboTimer-=dt;gunCd-=dt;rocketCd-=dt;flareCd-=dt;muzzle=Math.max(0,muzzle-dt);heli.hitCd=Math.max(0,heli.hitCd-dt);heli.turn=Math.max(0,heli.turn-dt);if(heli.turn>0){const u=clamp(1-heli.turn/1.65,0,1),ease=u*u*u*(u*(u*6-15)+10);heli.yaw=lerp(heli.yawStart,heli.yawTarget,ease);}else heli.yaw=heli.yawTarget;wind=damp(wind,L.lost?lostWind().x:L.wind*(.5+Math.sin(time*.61)*.32+Math.sin(time*1.71)*.18),1.1,dt);
@@ -140,7 +155,7 @@ function fixedUpdate(dt){visualTime+=dt;updateEffects(dt);if(mode!=='playing'){i
  if(heli.x<90||heli.x>L.length-70){heli.x=clamp(heli.x,90,L.length-70);heli.vx*=-.2;}// Open sky: altitude is not limited by an invisible ceiling.
 
  let gy=gearSupport();const wasLanded=heli.landed;heli.landed=false;
- if(heli.y>=gy){const impact=Math.hypot(heli.vx*.55,heli.vy);if(!wasLanded&&heli.airborne){landings++;if(school.active&&school.stage===2){school.cleanLanding=impact<55&&Math.abs(heli.angle)<.2;if(!school.cleanLanding)radio('Lite för hårt. Lyft igen och sänk dig långsammare mot plattan.',5);}if(impact>87||Math.abs(heli.angle)>.34){const dmg=Math.min(65,(Math.max(0,impact-62)*.42)+Math.abs(heli.angle)*28);if(L.lost)lost.reason='För hög fart eller för stor lutning vid markkontakten.';hitHeli(dmg);crashHits++;radio('Hård landning. Bromsa tidigt och räta upp före markkontakt.',4);smoke(heli.x,gy,25,1,'#6b6759');}else if(impact<38&&Math.abs(heli.angle)<.13){const landingKey=Math.round(heli.x/150);if(!precision.landings.has(landingKey)){precision.landings.add(landingKey);score+=75;popup(heli.x,heli.y-58,'MJUK LANDNING +75');}else popup(heli.x,heli.y-58,'MJUK LANDNING');}}if(!wasLanded)heli.compression=clamp(impact*.045,0,5.5);
+ if(heli.y>=gy){const impact=Math.hypot(heli.vx*.55,heli.vy);if(!wasLanded&&heli.airborne){landings++;if(school.active&&school.stage===2){school.cleanLanding=impact<55&&Math.abs(heli.angle)<.2;if(!school.cleanLanding)radio('Lite för hårt. Lyft igen och sänk dig långsammare mot plattan.',5);}if(impact>87||Math.abs(heli.angle)>.34){const dmg=Math.min(65,(Math.max(0,impact-62)*.42)+Math.abs(heli.angle)*28);if(L.lost)lost.reason='För hög fart eller för stor lutning vid markkontakten.';hitHeli(dmg);addDent(rand(-30,34),22,clamp(impact/110,.2,.9));crashHits++;radio('Hård landning. Bromsa tidigt och räta upp före markkontakt.',4);smoke(heli.x,gy,25,1,'#6b6759');}else if(impact<38&&Math.abs(heli.angle)<.13){const landingKey=Math.round(heli.x/150);if(!precision.landings.has(landingKey)){precision.landings.add(landingKey);score+=75;popup(heli.x,heli.y-58,'MJUK LANDNING +75');}else popup(heli.x,heli.y-58,'MJUK LANDNING');}}if(!wasLanded)heli.compression=clamp(impact*.045,0,5.5);
  const slope=Math.atan2(ground(heli.x+38)-ground(heli.x-37),75);
  // The gear only takes up so much hill. Lying flat along a steep slope pointed the rotor at
  // the hillside instead of the sky, and since lift is cos(angle) of thrust, anything past
@@ -155,7 +170,11 @@ function fixedUpdate(dt){visualTime+=dt;updateEffects(dt);if(mode!=='playing'){i
  if(!heli.landed)heli.fuel=Math.max(0,heli.fuel-dt*(.105+heli.collective*.00032+(mass-1)*.18));
  heli.nearGround=ground(heli.x)-heli.y;
  if(heli.nearGround<155&&Math.random()<dt*32*heli.spool){const x=heli.x+rand(-70,70);addParticle(x,ground(x)-3,(x-heli.x)*2+heli.vx*.25,rand(-45,-12),L.theme==='snow'?'#d7e3e2a0':'#b6a27990',rand(3,8),rand(.3,.8),'dust');}
- if(heli.hp<35&&Math.random()<dt*11)smoke(heli.x-heli.dir*13,heli.y-10,7,1.1,'#303539');
+ if(heli.hp<35&&Math.random()<dt*11){
+  const worst=heli.dents.reduce((a,b)=>!a||b.s>a.s?b:a,null);
+  const p=worst?rotateLocal(worst.x*heli.dir,worst.y):{x:heli.x-heli.dir*13,y:heli.y-10};
+  smoke(p.x,p.y,7,1.1,'#303539');
+ }
  updateWinch(dt);updateBase(dt);if(mode!=='playing')return;
  updateProjectiles(dt);if(mode!=='playing')return;
  // Pull back as the craft climbs: enough world height for the floor to stay just inside the
@@ -228,7 +247,14 @@ function updateEffects(dt){shake*=Math.exp(-6*dt);damageFlash=Math.max(0,damageF
 function poly(points,fill,stroke){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}}
 function line(x1,y1,x2,y2,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
 function ellipse(x,y,rx,ry,color){ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,Math.max(.01,rx),Math.max(.01,ry),0,0,TAU);ctx.fill()}
-function label(text,x,y,color='#d7e5df',size=11,align='center'){if(mode==='playing'&&Math.abs(x-heli.x)<150&&Math.abs(y-heli.y)<100)return;const px=size*1.92/scale;ctx.font=`${size<12?'600':'500'} ${px}px ui-monospace,monospace`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(text,x,y);ctx.textAlign='left'}
+function label(text,x,y,color='#d7e5df',size=11,align='center'){
+ let fade=1;
+ if(mode==='playing'){
+  if(Math.abs(x-heli.x)<150&&Math.abs(y-heli.y)<100)return;
+  fade=clamp(1.35-Math.abs(x-heli.x)/(vw*.40),0,1);
+  if(fade<=.02)return;
+ }
+ ctx.save();ctx.globalAlpha=fade;const px=size*1.92/scale;ctx.font=`${size<12?'600':'500'} ${px}px ui-monospace,monospace`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(text,x,y);ctx.restore();ctx.textAlign='left'}
 function glow(x,y,r,color){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2)}
 function palette(){const night=L.theme==='night',snow=L.theme==='snow',sun=L.theme==='sunset';return{top:snow?'#b7cace':night?'#244251':sun?'#776345':'#57726c',edge:snow?'#e4eddf':night?'#547683':sun?'#b19361':'#9ea88a',front:snow?'#506776':night?'#142b3b':sun?'#433f36':'#304955',facet:snow?'#657e87':night?'#1c3543':sun?'#585044':'#3f5961',tree:snow?'#547879':night?'#1d3f4b':'#35645e',treeLight:snow?'#acc8c5':night?'#335666':'#577e6a',night,snow};}
 // Keep the original 720-unit backdrop composition while the flight camera zooms in.
@@ -245,7 +271,22 @@ function drawAtmosphere(){const p=palette(),sun=L.theme==='sunset',storm=L.theme
  if(p.night){for(let i=0;i<48;i++){const x=((i*173.3-camera*.018)%vw+vw)%vw,y=30+(i*71.7)%230;ellipse(x,y,.7,.7,`rgba(205,225,235,${.15+.16*(1+Math.sin(visualTime*.5+i))})`);}}
  else if(!storm&&!p.snow){const x=vw*.76-camera*.025,y=sun?210:100;glow(x,y,180,sun?'#ffb95b26':'#fff3bc1c');ctx.save();ctx.globalCompositeOperation='screen';for(let i=0;i<5;i++){const shift=Math.sin(visualTime*.13+i)*22;const g=ctx.createLinearGradient(x,y,x-220,600);g.addColorStop(0,'#fff2b60d');g.addColorStop(1,'#fff2b600');poly([[x+i*12,y],[x+i*12+14,y],[x-220+i*65+shift,610],[x-300+i*65+shift,610]],g);}ctx.restore();}
  for(let i=0;i<8;i++){const width=260+i%3*100,x=((i*487-camera*.11+visualTime*(4+i%3))%(vw+800)+vw+800)%(vw+800)-400,y=75+(i*47)%210;const g=ctx.createRadialGradient(x,y,1,x,y,width);g.addColorStop(0,p.night?'#8ab5d010':storm?'#142b425a':'#e7eff126');g.addColorStop(1,'#dae8ee00');ctx.save();ctx.translate(x,y);ctx.scale(1,.18);ctx.translate(-x,-y);ctx.fillStyle=g;ctx.fillRect(x-width,y-width,width*2,width*2);ctx.restore();}
- for(let i=-2;i<Math.ceil(vw/44)+3;i++){const wx=i*44+Math.floor(camera*.38/44)*44,x=wx-camera*.38,y=535+Math.sin(wx*.003+L.seed)*35,h=20+15*(1+Math.sin(wx*.12));poly([[x-10,y],[x,y-h],[x+10,y]],p.night?'#25495380':'#426f6980');}
+ for(const band of [{speed:.30,base:548,scale:.72,tint:p.night?'#1f3d4766':'#3a625d5c',step:31},
+                    {speed:.42,base:534,scale:1,tint:p.night?'#25495386':'#42696280',step:39}]){
+  const first=Math.floor((camera*band.speed-60)/band.step);
+  for(let i=first;i<first+Math.ceil(vw/band.step)+4;i++){
+   const wx=i*band.step,seed=hash(wx*.37+L.seed);
+   if(seed<.16)continue;                                   // clearings, so the row is not a fence
+   const jitter=(hash(wx*.11)-.5)*band.step*.8;
+   const x=wx-camera*band.speed+jitter;
+   if(x<-40||x>vw+40)continue;
+   const y=band.base+Math.sin(wx*.003+L.seed)*33+Math.sin(wx*.0009)*22;
+   const h=(17+seed*34)*band.scale,w=(5.5+hash(wx*.71)*5)*band.scale;
+   const sway=Math.sin(visualTime*.35+wx*.02)*band.scale*(band.speed>.35?1.1:.5);
+   poly([[x-w,y],[x+w,y],[x+sway,y-h]],band.tint);
+   poly([[x-w*.72,y-h*.34],[x+w*.72,y-h*.34],[x+sway*.7,y-h*1.18]],band.tint);
+  }
+ }
  for(let i=0;i<4;i++){const y=440+i*24+Math.sin(visualTime*.19+i)*9,x=vw*.5+Math.sin(visualTime*.07+i)*vw*.35;const g=ctx.createRadialGradient(x,y,0,x,y,vw*.6);g.addColorStop(0,p.night?'#badce90c':'#d7e5da17');g.addColorStop(1,'#cadfda00');ctx.save();ctx.translate(x,y);ctx.scale(1,.075);ctx.translate(-x,-y);ctx.fillStyle=g;ctx.fillRect(x-vw,y-vw,vw*2,vw*2);ctx.restore();}
 }
 function drawGroundDetail(){const p=palette();for(let x=Math.floor((camera-40)/16)*16;x<camera+vw+40;x+=16){if(x<680)continue;const y=ground(x),n=Math.sin(x*43.7),gust=Math.sin(visualTime*2+x*.03)*2+wind*.08,rotorWash=clamp(1-Math.abs(x-heli.x)/100,0,1)*clamp(1-(ground(heli.x)-heli.y)/150,0,1)*heli.spool*13*Math.sign(x-heli.x);for(let j=0;j<3;j++)line(x+j*3,y+1,x+j*3+gust+rotorWash,y-3-Math.abs(n)*7,p.snow?'#e2eddf77':'#a5b08a66',1);if(n>.5)ellipse(x+4,y+5,3,1.5,p.edge);}}
@@ -380,11 +421,37 @@ function building(x,y,w,h,color='#425963'){ellipse(x+w*.55,y+4,w*.65,9,'#0a20265
 
 function landingPad(x,width=140,active=true){const y=ground(x);poly([[x-width/2-10,y+12],[x-width/2+10,y-16],[x+width/2+10,y-16],[x+width/2-10,y+12]],'#8ba4a1');poly([[x-width/2-10,y+12],[x+width/2-10,y+12],[x+width/2-10,y+17],[x-width/2-10,y+17]],'#345561');line(x-13,y-3,x-10,y-10,'#e5e7cb',2);line(x+13,y-3,x+16,y-10,'#e5e7cb',2);line(x-11,y-7,x+15,y-7,'#e5e7cb',2);for(let xx=x-width/2;xx<=x+width/2;xx+=width/4){ellipse(xx,y-3,2.2,2,active?'#d7f9ce':'#edbf70');if(palette().night)glow(xx,y-3,14,'#a0e0c24f');}}
 function drawBase(){const y=ground(300);building(100,y,132,68,'#526d70');poly([[100,y-68],[129,y-100],[228,y-100],[232,y-68]],'#708781');poly([[232,y-68],[228,y-100],[246,y-86],[246,y-10],[232,y]],'#314d58');ctx.fillStyle='#112b39';ctx.fillRect(147,y-48,70,48);line(149,y-46,215,y-46,'#d8be83',3);for(let x=103;x<136;x+=13){ctx.fillStyle='#a5c5c2';ctx.fillRect(x,y-45,8,15)}landingPad(390,174);landingPad(553,100);line(72,y,72,y-142,'#708c8d',3);line(72,y-142,88,y-130,'#839b91',2);const direction=wind>=0?1:-1;poly([[72,y-139],[72+direction*40,y-133+Math.sin(visualTime*3)*3],[72+direction*37,y-124+Math.sin(visualTime*3)*4],[72,y-128]],'#d99455');line(117,y-100,117,y-150,'#90a5a1',2);line(104,y-142,129,y-142,'#90a5a1',2);ellipse(117,y-151,2,2,Math.sin(visualTime*2)>0?'#efba7c':'#6a7063');label(L.lost?'EAGLE BASE':'FORWARD BASE',170,y-115,'#b8d5ce',10);label('SERVICE',390,y+28,'#a2c9bd',10);label('LANDNING',553,y+26,'#a2c9bd',9);
- if(heli.x<620&&heli.landed&&mode==='playing'){label(heli.carrying?'EVAKUERAR BESÄTTNING':'BRÄNSLE · REPARATION · AMMUNITION',400,y-90,'#d8e7bd',10);}}
+ if(heli.x<620&&heli.landed&&mode==='playing'){if(Math.abs(heli.x-400)<520)label(heli.carrying?'EVAKUERAR BESÄTTNING':'BRÄNSLE · REPARATION · AMMUNITION',400,y-90,'#d8e7bd',10);}}
 function drawOutpost(){if(!cargo)return;const y=ground(cargo.to);building(cargo.to+140,y,100,63,'#4e636b');landingPad(cargo.to,170,cargo.status==='delivered');label(cargo.status==='delivered'?'GENERATOR LEVERERAD':'SÄTT NER GENERATORN',cargo.to,y-50,cargo.status==='delivered'?'#c5f0d0':'#edc888',11);if(cargo.status!=='delivered'){ctx.setLineDash([4,6]);line(cargo.to-65,y-33,cargo.to+65,y-33,'#efc8869a');ctx.setLineDash([])}}
 function drawPerson(p){if(p.status==='aboard'||p.status==='delivered')return;const x=p.x,y=p.y;ctx.save();ctx.translate(x,y);const wave=Math.sin(visualTime*5+p.phase)*5;poly([[-8,-12],[-4,-15],[-4,1],[-9,-1]],'#465e52');ellipse(2,9,10,3,'#06151b50');poly([[-4,2],[0,2],[-1,10],[-5,10]],'#283c4b');poly([[2,2],[5,2],[7,10],[3,10]],'#1c303f');poly([[-6,-15],[5,-15],[7,3],[-5,3]],'#cc9e56');poly([[0,-15],[5,-15],[7,3],[0,3]],'#a5753e');ctx.fillStyle='#d2b496';ctx.fillRect(-3,-24,8,9);poly([[-4,-24],[1,-28],[6,-24],[6,-21],[-4,-21]],'#d7d1aa');line(-5,-12,-11,-21+wave,'#d6b284',3);line(6,-11,12,-21-wave,'#d6b284',3);line(-4,-8,5,-8,'#f5d080',2);line(0,-14,0,1,'#4f5b4c',1);ellipse(4,-20,1,1,'#293a39');line(-5,10,-1,10,'#122735',2);line(3,10,8,10,'#122735',2);ctx.restore();if(p.status==='waiting'){const pulse=.5+Math.sin(visualTime*2.5+p.phase)*.5;ctx.strokeStyle='#c9efd496';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(x,ground(x)+2,25+pulse*7,6,0,0,TAU);ctx.stroke();poly([[x-5,y-57],[x,y-51],[x+5,y-57]],'#c9efd4');label('SOS',x,y-66,'#d9f5d5',11);}}
 function drawCargo(){if(!cargo)return;const c=cargo;ctx.save();ctx.translate(c.x,c.y);line(-7,-20,0,-26,'#d3c494',2);line(0,-26,8,-20,'#d3c494',2);if(c.status==='attached')ctx.rotate(heli.ropeAngle*.4);poly([[-18,-13],[-9,-21],[24,-21],[18,-13]],'#ddc487');poly([[-18,-13],[18,-13],[18,13],[-18,13]],'#b58e4d');poly([[18,-13],[24,-21],[24,7],[18,13]],'#705c3b');ctx.fillStyle='#4c594f';ctx.fillRect(-13,-7,9,14);line(-15,-11,-15,10,'#f6df9855',1);line(15,-11,15,10,'#54442b',1);for(let y=-5;y<6;y+=3)line(-12,y,-5,y,'#151f26',1);ctx.fillStyle='#ddd3aa';ctx.fillRect(4,-5,8,8);line(-15,8,14,8,'#e4cc86',2);for(const x of [-12,11]){ellipse(x,-10,1,1,'#f3d79b');ellipse(x,10,1,1,'#463e30');}label('PWR',7,5,'#443e2c',5);ctx.restore();if(c.status==='waiting'){label('GENERATOR',c.x,c.y-48,'#edcc8d',11);poly([[c.x-4,c.y-38],[c.x,c.y-33],[c.x+4,c.y-38]],'#edcc8d')}}
 function drawEnemy(e){const dead=e.hp<=0;ctx.save();ctx.translate(e.x,e.y);ellipse(6,17,43,8,'#06131b66');poly([[-34,3],[-26,-7],[28,-7],[39,4],[33,16],[-31,16]],dead?'#263b43':'#263844');for(let i=-23;i<=25;i+=12){ellipse(i,9,5,5,dead?'#344852':'#57605a');ellipse(i,9,2,2,'#1e303b')}for(let i=-27;i<30;i+=6)line(i,16,i+3,17,'#879486',1);const col=dead?'#415057':e.flash>0?'#e5b886':'#817b60';poly([[-30,-8],[-20,-17],[26,-17],[33,-6],[30,4],[-29,4]],col);poly([[-20,-17],[26,-17],[19,-25],[-13,-25]],dead?'#3d4d55':'#a4a084');poly([[26,-17],[33,-6],[30,4],[23,-2]],'#4b5551');if(!dead){if(e.type==='missile'){ctx.save();ctx.translate(1,-23);ctx.rotate(-.7);ctx.fillStyle='#d0c7a0';ctx.fillRect(-17,-6,37,12);ctx.fillStyle='#384d53';ctx.fillRect(13,-7,9,14);ctx.restore()}else{ellipse(0,-20,15,8,'#727c68');ctx.save();ctx.translate(0,-23);ctx.rotate(e.aim);ctx.fillStyle='#293c45';ctx.fillRect(0,-3,35,6);ctx.fillStyle='#a2aa89';ctx.fillRect(6,-4,13,8);if(e.flash>0)poly([[34,-6],[48,0],[34,6],[38,0]],'#ffe7aa');ctx.restore();}ctx.fillStyle='#cc8b65';ctx.fillRect(-23,-10,8,3);for(const x of [-18,-7,4,15])line(x,-13,x+5,-13,'#d0c59c',1);line(-22,-5,24,-5,'#252f30',1);ellipse(22,-2,2,2,'#f3d69c');line(-20,-17,-22,-49,'#64746c',1);ellipse(-22,-49,1,1,'#ddba79');if(e.warn)glow(0,-29,22,'#ef916a5a');}ctx.restore();if(!dead){const y=e.y-62;line(e.x-23,y,e.x+23,y,'#263c4899',3);line(e.x-23,y,e.x-23+46*e.hp/e.max,y,'#e4a17b',3);}}
+// Impact damage, car-game style: a crumpled shadow where the panel took it, torn metal on the
+// struck side, scratches raked along the airframe, and soot once it is deep enough to matter.
+function drawDents(dir){
+ if(!heli.dents||!heli.dents.length)return;
+ ctx.save();
+ for(const k of heli.dents){
+  const x=k.x*dir,y=k.y,r=2.4+k.s*4.4,shade=hash(k.seed);
+  ctx.save();ctx.translate(x,y);
+  const pts=[];
+  for(let i=0;i<7;i++){const ang=i/7*TAU,rr=r*(.5+hash(k.seed+i*3)*.8);
+   pts.push([Math.cos(ang)*rr,Math.sin(ang)*rr*.72]);}
+  poly(pts,'rgba(19,31,38,'+(.26+k.s*.4).toFixed(2)+')');
+  // A bright torn lip on one side reads as bent metal rather than a smudge.
+  poly([pts[0],pts[1],pts[2],[0,0]],'rgba(198,208,203,'+(.16+k.s*.3).toFixed(2)+')');
+  for(let i=0;i<2+Math.round(k.s*3);i++){
+   const ang=(hash(k.seed+i*5)-.5)*1.5,len=r*(.5+hash(k.seed+i*2)*.8);
+   line(0,0,Math.cos(ang)*len*dir,Math.sin(ang)*len*.5,'rgba(26,38,45,.42)',1);
+  }
+  if(k.s>.62){
+   poly(pts.slice(2,6),'rgba(38,30,26,'+(.3+shade*.2).toFixed(2)+')');
+   ellipse(0,0,r*.34,r*.26,'rgba(12,16,18,.6)');
+  }
+  ctx.restore();
+ }
+ ctx.restore();
+}
 function heliBody(x,y,a,dir,t=0,isBoss=false){
  ctx.save();ctx.translate(x,y);ctx.rotate(a);if(isBoss)ctx.scale(1.55,1.4);
  const yaw=isBoss?(dir===1?0:Math.PI):heli.turn>0?heli.yaw:(dir===1?0:Math.PI),faces=[];
@@ -443,7 +510,11 @@ function heliBody(x,y,a,dir,t=0,isBoss=false){
  for(let blade=0;blade<2;blade++){const ang=rotor+blade*Math.PI,c=Math.cos(ang),sn=Math.sin(ang),r1=5,r2=91,w=2.4;face([[c*r1-sn*w,-47,sn*r1+c*w],[c*r2-sn*w,-47,sn*r2+c*w],[c*r2+sn*w,-47,sn*r2-c*w],[c*r1+sn*w,-47,sn*r1-c*w]],'#314d59d9');}
  // Painter sorting keeps roof, skids, windows and blades in the correct depth order.
  faces.sort((a,b)=>a.z-b.z);for(const f of faces){const pts=f.pp.map(p=>[p.x,p.y]);poly(pts,f.color);if(f.color.length===7){const ys=f.pp.map(p=>p.y),topY=Math.min(...ys),bottomY=Math.max(...ys);if(bottomY-topY>4){const light=ctx.createLinearGradient(-30,topY,45,bottomY);light.addColorStop(0,'#fff2c51c');light.addColorStop(.5,'#fff2c500');light.addColorStop(1,'#041b2927');poly(pts,light);}}}
- const disk=[];for(let j=0;j<=40;j++){const ang=j/40*TAU,p=point([Math.cos(ang)*92,-47,Math.sin(ang)*92]);disk.push([p.x,p.y]);}poly(disk,'#e1efdf0b');if(!reduceMotion){for(let j=0;j<3;j++){ctx.beginPath();for(let k=0;k<14;k++){const ang=rotor*.3+j*TAU/3+k*.042,p=point([Math.cos(ang)*88,-47,Math.sin(ang)*88]);k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)}ctx.strokeStyle='#dce9ce25';ctx.lineWidth=1.2;ctx.stroke();}}
+ if(!isBoss)drawDents(dir);
+ const bent=isBoss?0:(heli.rotorHurt||0);
+ const disk=[];for(let j=0;j<=40;j++){const ang=j/40*TAU,wob=1-bent*.09*Math.abs(Math.sin(ang*2+rotor*.3));
+  const p=point([Math.cos(ang)*92*wob,-47+bent*Math.sin(ang*2+rotor*.3)*3.5,Math.sin(ang)*92*wob]);disk.push([p.x,p.y]);}
+ poly(disk,bent>.25?'#e1efdf07':'#e1efdf0b');if(!reduceMotion){for(let j=0;j<3;j++){ctx.beginPath();for(let k=0;k<14;k++){const ang=rotor*.3+j*TAU/3+k*.042,p=point([Math.cos(ang)*88,-47,Math.sin(ang)*88]);k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)}ctx.strokeStyle='#dce9ce25';ctx.lineWidth=1.2;ctx.stroke();}}
  const hub=point([-1,-48,0]);ellipse(hub.x,hub.y,5,2.6,'#c9d4b8');
  const tail=point([-100,-22,4]);ctx.save();ctx.translate(tail.x,tail.y);ctx.rotate(rotor*1.9);line(-12,0,12,0,'#173947',2);line(0,-12,0,12,'#173947',2);ctx.restore();ellipse(tail.x,tail.y,13,13,'#c7ded00d');
  const lamp=point([-26,-24,16]);ellipse(lamp.x,lamp.y,2.2,2.2,Math.sin(visualTime*4)>0?'#ed9b79':'#815e53');
@@ -487,7 +558,7 @@ function drawWinchGuides(){
  hookNote(held==='cargo'?'LAST · SÄNK VID MÅLET':held?'SLÄPP VINSCHEN · HISSA':Math.round(heli.rope*.45)+' m',
   hx+15,hy+4,held?'#bfe6cf':'#cfe2ddcc','left');
 }
-function hookNote(text,x,y,color,align){ctx.font='600 11px ui-monospace,monospace';ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(text,x,y);ctx.textAlign='center';}
+function hookNote(text,x,y,color,align){ctx.font='600 11px ui-monospace,monospace';ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(text,x,y);ctx.restore();ctx.textAlign='center';}
 
 // Screen-space flight instruments: an altitude ladder pinned to the right edge, reading the
 // same height above ground as the rail, plus a warm wash when the skids get close.
@@ -600,16 +671,16 @@ function updateLost(dt){if(!L.lost||!lost.active)return;lost.total+=dt;lost.last
  if(!lost.secret&&Math.hypot(heli.x-3940,heli.y-685)<70){lost.secret=true;popup(heli.x,heli.y-80,'GRUVANS HEMLIGHET');radio('Dålig idé. Utmärkt resultat.',4);}
  if(heli.carrying===people.length&&!lost.returning){lost.returning=true;radio('Alla ombord. Helikoptern räknas också som alla. Ta er hem.',6);}
  const pad=lostPads.findIndex(p=>Math.abs(heli.x-p.x)<p.w*.38);const safe=pad>=0&&heli.landed&&Math.abs(heli.vx)<12&&Math.abs(heli.angle)<.16;
- lost.hold=safe?lost.hold+dt:0;if(safe&&lost.hold>1.1){if(!lost.returning&&pad>lost.cp){lost.cp=pad;heli.hp=Math.min(100,heli.hp+35);heli.fuel=100;heli.rockets=8;lost.snapshot=lostSnapshot();saveLost();popup(heli.x,heli.y-80,'CHECKPOINT SPARAD');
+ lost.hold=safe?lost.hold+dt:0;if(safe&&lost.hold>1.1){if(!lost.returning&&pad>lost.cp){lost.cp=pad;heli.hp=Math.min(100,heli.hp+35);repairDents(.45);heli.fuel=100;heli.rockets=8;lost.snapshot=lostSnapshot();saveLost();popup(heli.x,heli.y-80,'CHECKPOINT SPARAD');
    const praise=['Nu får du misslyckas från en lite bättre plats.','Sparat. Berget vet att du var här.',
     'Snyggt. Det såg nästan avsiktligt ut.','Checkpoint. Andas. Sedan fortsätter det.',
     'Du är officiellt bättre än den förra piloten.','Sparat. Ingen behöver få veta hur det gick till.',
     'Bra landning. Dalen är fortfarande längre än du tror.'];
-   radio(praise[pad%praise.length],5);AudioState.sfx('rescue');}if(lost.returning&&pad>0&&!lost.returnService.has(pad)){lost.returnService.add(pad);heli.hp=Math.min(100,heli.hp+20);heli.fuel=100;radio('Snabb service. Hemresan återstår.',3);}}
+   radio(praise[pad%praise.length],5);AudioState.sfx('rescue');}if(lost.returning&&pad>0&&!lost.returnService.has(pad)){lost.returnService.add(pad);heli.hp=Math.min(100,heli.hp+20);repairDents(.3);heli.fuel=100;radio('Snabb service. Hemresan återstår.',3);}}
  if(lost.lastSave>4){saveLost();lost.lastSave=0;}
  $('lostStatus').hidden=false;const progress=Math.round(lost.best/L.beacon*100);$('lostStatus').textContent=(lost.returning?'← HEM TILL EAGLE BASE':'→ RESCUE BEACON')+' · '+lostPads[lost.cp].name+' · BÄSTA '+progress+' % · '+lost.crashes+' KRASCHER';$('tip').textContent=heli.x>3350&&heli.x<4350?(heli.y>510?'GRUVAN · HÅLL CENTRUM · AKTA TAK OCH VÄGGAR':'SÄKRA VÄGEN · FLYG ÖVER BERGET'):lostWind().label+' · LÄR DIG RYTMEN · LANDA VID RELÄPLATTORNA';
 }
-function drawLost(){if(!L.lost)return;for(let i=1;i<lostPads.length;i++){const p=lostPads[i];landingPad(p.x,p.w,i<=lost.cp);label(p.name,p.x,ground(p.x)-83,'#c6ead8',13);label(i<=lost.cp?'CHECKPOINT SPARAD':'LANDA LUGNT · SPARA CHECKPOINT',p.x,ground(p.x)+34,'#c6ead8',10);if(Math.abs(heli.x-p.x)<p.w&&lost.hold>0)line(p.x-45,ground(p.x)-62,p.x-45+90*clamp(lost.hold/1.1,0,1),ground(p.x)-62,'#c6efd5',3);}
+function drawLost(){if(!L.lost)return;for(let i=1;i<lostPads.length;i++){const p=lostPads[i];landingPad(p.x,p.w,i<=lost.cp);label(p.name,p.x,ground(p.x)-83,'#c6ead8',13);if(Math.abs(heli.x-p.x)<340)label(i<=lost.cp?'CHECKPOINT SPARAD':'LANDA LUGNT · SPARA CHECKPOINT',p.x,ground(p.x)+34,'#c6ead8',10);if(Math.abs(heli.x-p.x)<p.w&&lost.hold>0)line(p.x-45,ground(p.x)-62,p.x-45+90*clamp(lost.hold/1.1,0,1),ground(p.x)-62,'#c6efd5',3);}
  const areas=[[780,'DEN ÖPPNA DALEN'],[2100,'FLODPASSAGEN'],[2670,'VINDPASSET'],[3300,'DEN GAMLA GRUVAN'],[4740,'BERGSBRON'],[5450,'STORMTOPPEN'],
   [7900,'KOPPARRYGGEN'],[10300,'FLODDALEN'],[12600,'FJÄLLSTATIONEN'],[14800,'LÅNGA PASSET'],
   [17100,'NORRA DALEN'],[19500,'DEN ÖVERGIVNA BASEN'],[21800,'FYRLEDEN'],[24200,'SISTA ANFLYGNINGEN']];for(const [x,name]of areas)if(Math.abs(x-camera-vw/2)<vw)label(name,x,150,'#d1e3d577',18);
