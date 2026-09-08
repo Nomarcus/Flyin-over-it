@@ -19,7 +19,7 @@ const levels=[
  ,{name:'EMERALD PASSAGE',region:'Smaragddjungeln',brief:'Tre forskare väntar i ravinen. Följ de turkosa lamporna ner under klippvalvet och rädda forskaren i grottan. Håll rotorn fri från tak och pelare. Klippor med ljus kant är fasta hinder; träd och lianer är bakgrund. Återvänd till basen med alla tre.',objective:'Rädda 3 forskare, en inne i grottan.',length:5000,seed:203,theme:'jungle',people:[1470,2420,4080],guns:[{x:3710,type:'gun'}],par:310,wind:7}
  ,{name:'THE LOST VALLEY',region:'The Lost Valley',brief:'Nå fyren, rädda besättningen och flyg hela vägen hem.',objective:'Rädda 2 vid fyren och återvänd till Eagle Base.',length:26000,beacon:25200,seed:317,theme:'day',people:[25030,25320],guns:[],par:1500,wind:0,lost:true}
 ];
-let save={unlocked:0,results:{},best:0,muted:false,sensitivity:1,depthMode:false};try{const s=JSON.parse(localStorage.getItem('rotorBlackSkyV2')||'null');if(s&&typeof s==='object'){save.unlocked=clamp(Number(s.unlocked)||0,0,levels.length-1);save.results=s.results||{};save.best=Number(s.best)||0;save.muted=!!s.muted;save.sensitivity=clamp(Number(s.sensitivity)||1,.5,1.6);save.depthMode=false;save.schoolComplete=!!s.schoolComplete;save.trainingResults=s.trainingResults||{}}}catch{}
+let save={unlocked:0,results:{},best:0,muted:false,sensitivity:1,depthMode:false,musicVolume:.55};try{const s=JSON.parse(localStorage.getItem('rotorBlackSkyV2')||'null');if(s&&typeof s==='object'){save.unlocked=clamp(Number(s.unlocked)||0,0,levels.length-1);save.results=s.results||{};save.best=Number(s.best)||0;save.muted=!!s.muted;save.musicVolume=clamp(Number(s.musicVolume??.55),0,1);save.sensitivity=clamp(Number(s.sensitivity)||1,.5,1.6);save.depthMode=false;save.schoolComplete=!!s.schoolComplete;save.trainingResults=s.trainingResults||{}}}catch{}
 const TEST_FLIGHT=true;
 save.depthMode=false;
 function persist(){try{localStorage.setItem('rotorBlackSkyV2',JSON.stringify(save))}catch{}}
@@ -715,9 +715,96 @@ function render(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#06151f';ctx.
     line(-w,-h,w,-h*.7,'#c3ccc6',1);ctx.restore();
    }
   }for(const p of people)if(p.status!=='attached')drawPerson(p);if(cargo?.status!=='attached')drawCargo();if(boss&&boss.hp>0&&boss.x>camera-170&&boss.x<camera+vw+170){ellipse(boss.x,ground(boss.x),70,11,'#071b284d');heliBody(boss.x,boss.y,Math.sin(boss.t*.8)*.07,heli.x<boss.x?-1:1,0,true);}if(heli.z<=14)drawPlayer();drawWinchGuides();drawEffects();ctx.restore();drawWeather();ctx.fillStyle=screenGrad('vignette',()=>{const g=ctx.createRadialGradient(vw*.5,vh*.45,Math.min(vw,vh)*.3,vw*.5,vh*.5,Math.max(vw,vh)*.7);g.addColorStop(0,'#00000000');g.addColorStop(1,'#05152066');return g});ctx.fillRect(0,0,vw,vh);if(damageFlash>0&&!reduceMotion){ctx.fillStyle=`rgba(206,91,57,${damageFlash})`;ctx.fillRect(0,0,vw,vh)}drawFlightInstruments();ctx.restore();}
+// --- Music ---------------------------------------------------------------------------------
+// Tracks are streamed from dist/music/<name>.mp3 with plain audio elements rather than decoded
+// into Web Audio buffers: a three-minute track decodes to tens of megabytes, and a phone should
+// not be asked to hold six of those in memory at once.
+//
+// A missing file is not an error. Until the mp3s are added the game simply runs silent, and any
+// track that fails to load falls back down MUSIC_FALLBACK to one that exists.
+const MUSIC_DIR='music/';
+const MUSIC_FALLBACK={title:null,valley:null,beacon:'valley',shaft:'valley',school:'title',
+ jungle:'valley',debrief:'title'};
+const Music={
+ tracks:{},failed:{},cur:null,prev:null,gain:0,prevGain:0,unlocked:false,
+ // Resolve a name to something that actually loaded, walking the fallback chain.
+ resolve(name){
+  let hops=0;
+  while(name&&this.failed[name]&&hops++<4)name=MUSIC_FALLBACK[name]||null;
+  return name;
+ },
+ el(name){
+  if(this.tracks[name])return this.tracks[name];
+  if(this.failed[name]||typeof Audio!=='function')return null;
+  const a=new Audio(MUSIC_DIR+name+'.mp3');
+  a.preload='auto';a.loop=true;a.volume=0;
+  a.addEventListener('error',()=>{this.failed[name]=true;delete this.tracks[name];
+   if(this.cur===name){this.cur=null;this.gain=0;}});
+  this.tracks[name]=a;
+  return a;
+ },
+ // Browsers will not start audio without a gesture, so this is called from the same taps that
+ // start the sound engine.
+ unlock(){
+  this.unlocked=true;
+  const c=this.cur&&this.tracks[this.cur];
+  if(c&&c.paused)c.play().catch(()=>{});
+ },
+ want(name){
+  name=this.resolve(name);
+  if(name===this.cur)return;
+  // Whatever was already fading out loses its slot; two crossfades at once is mud.
+  if(this.prev&&this.tracks[this.prev])this.tracks[this.prev].pause();
+  this.prev=this.cur;this.prevGain=this.gain;
+  this.cur=name;this.gain=0;
+  const el=name?this.el(name):null;
+  if(el&&this.unlocked){try{el.currentTime=0}catch{}el.volume=0;el.play().catch(()=>{});}
+ },
+ update(dt){
+  const ceiling=save.muted?0:clamp(save.musicVolume??.55,0,1);
+  if(this.prev){
+   this.prevGain=Math.max(0,this.prevGain-dt*.9);
+   const p=this.tracks[this.prev];
+   if(p)p.volume=clamp(this.prevGain*ceiling,0,1);
+   if(this.prevGain<=0){if(p)p.pause();this.prev=null;}
+  }
+  const c=this.cur?this.tracks[this.cur]:null;
+  if(!c)return;
+  if(ceiling<=0){if(!c.paused)c.pause();c.volume=0;return;}
+  if(this.unlocked&&c.paused)c.play().catch(()=>{});
+  this.gain=Math.min(1,this.gain+dt*.7);
+  // An mp3 loop leaves a small gap at the seam. Dipping through it reads as a breath rather
+  // than a cut, which is the best that can be done without decoding the whole file.
+  let seam=1;
+  const d=c.duration;
+  if(d&&isFinite(d)){
+   if(d-c.currentTime<1.2)seam=Math.min(seam,.4+(d-c.currentTime)/1.2*.6);
+   if(c.currentTime<1.2)seam=Math.min(seam,.4+c.currentTime/1.2*.6);
+  }
+  c.volume=clamp(this.gain*ceiling*seam,0,1);
+ },
+ // Called when the mute button or the volume slider moves.
+ sync(){this.update(0);}
+};
+// Which track the game wants right now. Keep this the only place that decides.
+function musicForState(){
+ if(mode==='menu'||mode==='settings')return 'title';
+ if(mode==='lostDone'||mode==='debrief')return 'debrief';
+ if(school.active)return 'school';
+ if(!L)return 'title';
+ if(L.theme==='jungle')return 'jungle';
+ if(L.lost){
+  // Down between the walls of a shaft, where the sky is a long way up.
+  const rim=ground(heli.x-400);
+  if(ground(heli.x)-rim>120&&heli.y>rim+40)return 'shaft';
+  if(heli.x>20000)return 'beacon';
+ }
+ return 'valley';
+}
+
 const AudioState={ac:null,master:null,rotor:null,rotorGain:null,music:null,nextNote:0,note:0,noise:null,
- init(){if(this.ac){this.ac.resume().catch(()=>{});return;}const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)return;try{this.ac=new Constructor();const a=this.ac;this.master=a.createGain();this.master.gain.value=0;this.master.connect(a.destination);this.music=a.createGain();this.music.gain.value=.65;this.music.connect(this.master);this.rotorGain=a.createGain();this.rotorGain.gain.value=.045;this.rotor=a.createOscillator();this.rotor.type='sawtooth';this.rotor.frequency.value=44;const low=a.createBiquadFilter();low.type='lowpass';low.frequency.value=175;this.rotor.connect(low);low.connect(this.rotorGain);this.rotorGain.connect(this.master);this.rotor.start();const lfo=a.createOscillator(),depth=a.createGain();lfo.frequency.value=17;depth.gain.value=.02;lfo.connect(depth);depth.connect(this.rotorGain.gain);lfo.start();this.noise=a.createBuffer(1,a.sampleRate*.7,a.sampleRate);const data=this.noise.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;this.nextNote=a.currentTime+.25;a.resume().catch(()=>{});this.sync();}catch{this.ac=null;}}
- ,sync(){if(!this.ac)return;const running=mode==='playing';this.master.gain.setTargetAtTime(save.muted||!running?0:.42,this.ac.currentTime,.16);if(running)this.nextNote=Math.max(this.ac.currentTime+.08,this.nextNote);}
+ init(){Music.unlock();if(this.ac){this.ac.resume().catch(()=>{});return;}const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)return;try{this.ac=new Constructor();const a=this.ac;this.master=a.createGain();this.master.gain.value=0;this.master.connect(a.destination);this.music=a.createGain();this.music.gain.value=.65;this.music.connect(this.master);this.rotorGain=a.createGain();this.rotorGain.gain.value=.045;this.rotor=a.createOscillator();this.rotor.type='sawtooth';this.rotor.frequency.value=44;const low=a.createBiquadFilter();low.type='lowpass';low.frequency.value=175;this.rotor.connect(low);low.connect(this.rotorGain);this.rotorGain.connect(this.master);this.rotor.start();const lfo=a.createOscillator(),depth=a.createGain();lfo.frequency.value=17;depth.gain.value=.02;lfo.connect(depth);depth.connect(this.rotorGain.gain);lfo.start();this.noise=a.createBuffer(1,a.sampleRate*.7,a.sampleRate);const data=this.noise.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;this.nextNote=a.currentTime+.25;a.resume().catch(()=>{});this.sync();}catch{this.ac=null;}}
+ ,sync(){Music.sync();if(!this.ac)return;const running=mode==='playing';this.master.gain.setTargetAtTime(save.muted||!running?0:.42,this.ac.currentTime,.16);if(running)this.nextNote=Math.max(this.ac.currentTime+.08,this.nextNote);}
  ,tone(freq,duration,volume,type='sine',endFreq=0,delay=0,output=null){if(!this.ac)return;const a=this.ac,t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(endFreq)o.frequency.exponentialRampToValueAtTime(Math.max(12,endFreq),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.015);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(output||this.master);o.start(t);o.stop(t+duration+.02);o.onended=()=>{o.disconnect();g.disconnect()};}
  ,noiseHit(duration,volume,cutoff){if(!this.ac||!this.noise)return;const a=this.ac,t=a.currentTime,b=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();b.buffer=this.noise;f.type='lowpass';f.frequency.value=cutoff;g.gain.setValueAtTime(volume,t);g.gain.exponentialRampToValueAtTime(.001,t+duration);b.connect(f);f.connect(g);g.connect(this.master);b.start();b.stop(t+duration+.01);b.onended=()=>{b.disconnect();f.disconnect();g.disconnect()};}
  ,sfx(type){if(!this.ac||save.muted)return;if(type==='gun'){this.noiseHit(.065,.10,1450);this.tone(130,.07,.07,'triangle',48)}if(type==='rocket'){this.noiseHit(.35,.22,780);this.tone(170,.32,.12,'sawtooth',36)}if(type==='boom'){this.noiseHit(.65,.46,700);this.tone(82,.58,.24,'sine',22)}if(type==='hit'){this.noiseHit(.12,.11,2100)}if(type==='attach'){this.tone(560,.12,.08,'sine');this.tone(750,.16,.06,'sine',0,.1)}if(type==='rescue'){[440,554.37,659.25].forEach((f,i)=>this.tone(f,.34,.09,'sine',0,i*.09))}if(type==='flare')this.noiseHit(.25,.16,1900);if(type==='switch')this.tone(310,.09,.04,'triangle',240);}
@@ -785,7 +872,10 @@ function updateWreck(dt){
 }
 function failMission(reason){if(mode!=='playing')return;beginWreck(reason,L.lost?crashLost:failNow);}
 function failNow(reason){mode='failed';explode(heli.x,heli.y,1.2);for(let i=0;i<5;i++)debris.push({x:heli.x+rand(-20,20),y:heli.y,vx:rand(-80,80),vy:rand(-80,-20),s:rand(.5,1),type:'falling'});showModal('SAR–07 / NÖDSIGNAL','Tillbaka i luften.',`<p>${reason||'Helikoptern klarade inte skadorna. Ditt senaste uppdrag kan startas om direkt.'}</p><p>Tips: börja bromsa innan du når målet. Motluta, räta upp och sänk dig långsamt. H stabiliserar höjden vid räddning.</p>`,[{text:'FÖRSÖK IGEN',primary:true,run:()=>school.active?startDrill(school.kind||'basic'):loadLevel(level)},{text:'VÄLJ UPPDRAG',run:selectMissions}]);}
-function settings(){if(!['menu','playing','paused'].includes(mode))return;const previous=mode;clearInput();mode='settings';showModal('FLIGHT CONTROLS','Ställ in flygningen.',`<label class="settingLabel" for="sensitivity">Styrkänslighet <b id="sensitivityValue">${Math.round(save.sensitivity*100)} %</b></label><input id="sensitivity" type="range" min="50" max="160" step="5" value="${Math.round(save.sensitivity*100)}"><p>Små utslag för precision. Stora utslag ger upp till 70° lutning. Motluta för att bromsa; öka lyftet i branta svängar.</p><button id="gyroEnable">${gyro.enabled?'STÄNG AV GYRO':'AKTIVERA GYRO'}</button> <button id="gyroCalibrate">KALIBRERA MITTLÄGE</button><p id="gyroStatus" role="status">${gyro.status}</p><label><input id="gyroInvert" type="checkbox" ${gyro.invert?'checked':''}> Omvänd gyroriktning</label><p>Håll iPhone/iPad bekvämt i liggande läge och kalibrera. Luta sedan vänster/höger. Skärmhalvor och gyro fungerar samtidigt. H / STABILISERA hjälper vid vinschning.</p>`,[{text:'FORTSÄTT',primary:true,run:()=>{save.sensitivity=clamp(Number($('sensitivity').value)/100,.5,1.6);persist();dismiss();mode=previous;$('mobile').hidden=mode!=='playing'||!coarse;updateHUD();AudioState.sync();if(previous==='paused'){mode='playing';pause()}}}]);$('sensitivity').oninput=()=>{$('sensitivityValue').textContent=$('sensitivity').value+' %';};$('gyroEnable').onclick=enableGyro;$('gyroCalibrate').onclick=calibrateGyro;$('gyroInvert').onchange=e=>{gyro.invert=e.target.checked;gyro.filtered=0;};}
+function settings(){if(!['menu','playing','paused'].includes(mode))return;const previous=mode;clearInput();mode='settings';showModal('FLIGHT CONTROLS','Ställ in flygningen.',`<label class="settingLabel" for="sensitivity">Styrkänslighet <b id="sensitivityValue">${Math.round(save.sensitivity*100)} %</b></label><input id="sensitivity" type="range" min="50" max="160" step="5" value="${Math.round(save.sensitivity*100)}"><label class="settingLabel" for="musicVol">Musik <b id="musicVolValue">${Math.round((save.musicVolume??.55)*100)} %</b></label><input id="musicVol" type="range" min="0" max="100" step="5" value="${Math.round((save.musicVolume??.55)*100)}"><p>Små utslag för precision. Stora utslag ger upp till 70° lutning. Motluta för att bromsa; öka lyftet i branta svängar.</p><button id="gyroEnable">${gyro.enabled?'STÄNG AV GYRO':'AKTIVERA GYRO'}</button> <button id="gyroCalibrate">KALIBRERA MITTLÄGE</button><p id="gyroStatus" role="status">${gyro.status}</p><label><input id="gyroInvert" type="checkbox" ${gyro.invert?'checked':''}> Omvänd gyroriktning</label><p>Håll iPhone/iPad bekvämt i liggande läge och kalibrera. Luta sedan vänster/höger. Skärmhalvor och gyro fungerar samtidigt. H / STABILISERA hjälper vid vinschning.</p>`,[{text:'FORTSÄTT',primary:true,run:()=>{save.sensitivity=clamp(Number($('sensitivity').value)/100,.5,1.6);save.musicVolume=clamp(Number($('musicVol').value)/100,0,1);persist();dismiss();mode=previous;$('mobile').hidden=mode!=='playing'||!coarse;updateHUD();AudioState.sync();if(previous==='paused'){mode='playing';pause()}}}]);$('sensitivity').oninput=()=>{$('sensitivityValue').textContent=$('sensitivity').value+' %';};
+ // Heard while you drag it, which is the only way to set a music level.
+ $('musicVol').oninput=()=>{save.musicVolume=clamp(Number($('musicVol').value)/100,0,1);
+  $('musicVolValue').textContent=$('musicVol').value+' %';Music.sync();};$('gyroEnable').onclick=enableGyro;$('gyroCalibrate').onclick=calibrateGyro;$('gyroInvert').onchange=e=>{gyro.invert=e.target.checked;gyro.filtered=0;};}
 
 function selectMissions(){mode='select';$('menu').hidden=true;showModal('FLIGHT OPERATIONS','Välj uppdrag.','<div class="missionlist" id="missionList"></div><p>TESTFLYGNING: alla uppdrag är upplåsta. Stjärnor och poäng sparas på den här enheten.</p>',[{text:'TILLBAKA',run:toMenu}]);const list=$('missionList');levels.forEach((l,i)=>{const b=document.createElement('button'),r=save.results[i],locked=!TEST_FLIGHT&&i>save.unlocked;b.disabled=locked;b.innerHTML=`<b>${String(i+1).padStart(2,'0')} / ${l.region.toUpperCase()}</b>${l.name}<span>${locked?'LÅST — KLARA FÖREGÅENDE':r?'★'.repeat(r.stars)+'☆'.repeat(3-r.stars)+' · '+fmt(r.score)+' poäng':'REDO FÖR START'}</span>`;b.onclick=()=>l.lost?startLost():loadLevel(i);list.append(b);});}
 // THE LOST VALLEY: additive challenge mode; campaign physics remains shared.
@@ -981,7 +1071,7 @@ $('hoverBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(mode==='p
 $('menuSettings').onclick=settings;$('lostBtn').onclick=()=>startLost();$('freshLostBtn').onclick=()=>{showModal('NYTT FÖRSÖK','Börja från Eagle Base?','<p>Det sparade försöket ersätts när du startar.</p>',[{text:'STARTA NYTT',primary:true,run:()=>startLost(true)},{text:'TILLBAKA',run:toMenu}]);};$('startBtn').onclick=()=>{AudioState.init();if(!save.schoolComplete&&save.unlocked===0)startTraining();else if(levels[save.unlocked]?.lost)startLost();else loadLevel(save.unlocked)};$('schoolBtn').onclick=selectTraining;$('skipSchool').onclick=selectTraining;$('retrySchool').onclick=()=>{const kind=school.kind||'basic';startDrill(kind)};$('selectBtn').onclick=selectMissions;$('jungleBtn').onclick=()=>{AudioState.init();loadLevel(6)};$('pauseBtn').onclick=pause;$('settingsBtn').onclick=settings;$('soundBtn').onclick=()=>{save.muted=!save.muted;persist();AudioState.init();AudioState.sync();updateHUD()};$('fullBtn').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();}catch{}};if(!document.documentElement.requestFullscreen)$('fullBtn').hidden=true;
 addEventListener('keydown',e=>{if(e.code!=='Tab'||$('modal').hidden)return;const list=[...$('modal').querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]')];if(!list.length)return;const first=list[0],last=list[list.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}});
 addEventListener('blur',()=>{if(lost.active)saveLost();clearInput();if(mode==='playing')pause()});document.addEventListener('visibilitychange',()=>{if(document.hidden){if(lost.active)saveLost();clearInput();if(mode==='playing')pause()}});
-let previous=0,accumulator=0;function frame(now){const dt=Math.min(.08,(now-previous)/1000||0);previous=now;accumulator+=dt;while(accumulator>=1/120){fixedUpdate(1/120);accumulator-=1/120;}render();requestAnimationFrame(frame);}
+let previous=0,accumulator=0;function frame(now){const dt=Math.min(.08,(now-previous)/1000||0);previous=now;accumulator+=dt;while(accumulator>=1/120){fixedUpdate(1/120);accumulator-=1/120;}Music.want(musicForState());Music.update(dt);render();requestAnimationFrame(frame);}
 resize();loadLevel(0,false);if(save.unlocked>0)$('startBtn').innerHTML='FORTSÄTT KAMPANJ <span>→</span>';requestAnimationFrame(frame);
 })();
 

@@ -1,9 +1,13 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');const {createCanvas,loadImage}=require('@napi-rs/canvas');
 (async()=>{
-const kv={};const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classes:new Set(),get classList(){const c=this.classes;return{toggle:(k,on)=>{on===undefined?(c.has(k)?c.delete(k):c.add(k)):(on?c.add(k):c.delete(k))},add:k=>c.add(k),remove:k=>c.delete(k),contains:k=>c.has(k)}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
-const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:()=>element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,testArt:{day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
+const kv={};globalThis.madeAudio=[];const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classes:new Set(),get classList(){const c=this.classes;return{toggle:(k,on)=>{on===undefined?(c.has(k)?c.delete(k):c.add(k)):(on?c.add(k):c.delete(k))},add:k=>c.add(k),remove:k=>c.delete(k),contains:k=>c.has(k)}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
+const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:()=>element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,
+ Audio:function(src){this.src=src;this.volume=0;this.paused=true;this.currentTime=0;this.loop=false;this.preload='';
+  this.duration=120;this.play=()=>{this.paused=false;return Promise.resolve()};this.pause=()=>{this.paused=true};
+  this.addEventListener=(t,fn)=>{if(t==='error')this.fail=fn};globalThis.madeAudio.push(this);},
+ testArt:{day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
-code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,getStars:()=>stars,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,getStars:()=>stars,Music,musicForState,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
 
 const emit=(id,type,pointerId,x,y=300)=>{for(const f of element(id).listeners[type]||[])f({pointerId,clientX:x,clientY:y,preventDefault(){}})};
 a.startLost(true);a.begin();
@@ -56,6 +60,57 @@ assert(/HEMMA/.test(nodes.modalTag.textContent),'Arriving home opens the debrief
  assert(nodes.modalActions.children.some(b=>/EN GÅNG TILL/.test(b.textContent)),'And offers another run');
 }
 console.log('PASS: the long valley ends, and the ending turns');
+
+// Music. The tracks do not exist yet, so the point of this is that the game asks for the right
+// one, survives their absence, and obeys the mute button and the volume it was given.
+{
+ const M=a.Music;
+ a.loadLevel(7);a.set({mode:'menu'});
+ assert.equal(a.musicForState(),'title','The menu asks for the title theme');
+ a.begin();
+ h=a.get().heli;h.x=3000;h.y=a.ground(3000)-200;
+ assert.equal(a.musicForState(),'valley','The valley asks for the valley theme');
+ h.x=22000;
+ assert.equal(a.musicForState(),'beacon','The last stretch has its own theme');
+ // Down inside a shaft, below the rim.
+ const shaft=a.getStars()[0];
+ h.x=shaft.x;h.y=a.ground(shaft.x)-40;
+ assert.equal(a.musicForState(),'shaft','Below the rim asks for the shaft theme');
+ a.set({mode:'lostDone'});
+ assert.equal(a.musicForState(),'debrief','Coming home has its own theme');
+ a.set({mode:'playing'});
+
+ // Nothing may throw while the files are missing, and a failed load must fall back.
+ M.unlock();M.want('beacon');
+ assert(globalThis.madeAudio.length>0,'It tried to load a track');
+ const el=globalThis.madeAudio[globalThis.madeAudio.length-1];
+ assert(/music\/beacon\.mp3$/.test(el.src),'from the music folder, got '+el.src);
+ assert.equal(el.loop,true,'and loops it');
+ M.update(1/60);
+ assert(el.volume>0,'and brings it up');
+ el.fail();                                   // the file is not there
+ M.want('beacon');
+ assert.equal(M.cur,'valley','A missing track falls back to one that exists');
+ // Mute silences it and releases the stream.
+ const playing=M.tracks[M.cur];
+ // Away from the loop seam, where the game deliberately dips the level to hide the mp3 gap.
+ playing.currentTime=30;
+ for(let i=0;i<80;i++)M.update(1/60);
+ assert(playing.volume>0,'Music plays when it is not muted');
+ a.get().save.muted=true;M.update(1/60);
+ assert.equal(playing.volume,0,'Mute silences the music');
+ assert(playing.paused,'and stops the stream rather than playing silence');
+ a.get().save.muted=false;
+ // The volume setting is respected, not just on or off.
+ a.get().save.musicVolume=.25;
+ playing.currentTime=30;
+ for(let i=0;i<80;i++)M.update(1/60);
+ assert(Math.abs(playing.volume-.25)<.06,'The volume setting is obeyed, got '+playing.volume.toFixed(2));
+ playing.currentTime=playing.duration-.2;M.update(1/60);
+ assert(playing.volume<.18,'and the level dips through the loop seam, got '+playing.volume.toFixed(2));
+ a.get().save.musicVolume=.55;
+}
+console.log('PASS: music picks the right track, survives missing files, and obeys mute');
 console.log('PASS: all 11 checkpoints, late checkpoint reload, both far beacon rescues and return completion');
 
 // Valley geometry. The flight tests reach checkpoints by teleporting, so nothing else here
