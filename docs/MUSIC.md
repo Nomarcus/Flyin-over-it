@@ -1,165 +1,135 @@
-# Music briefs
+# Music — copy and paste into Suno
 
-Seven tracks plus a main theme. `valley` is the reference — it came out right, so everything
-else is built from the same parts so the score sounds like one hand wrote it.
+Eight generations. Everything is baked into each string, so nothing needs assembling: pick a
+track, paste its line into **Style of Music**, generate.
 
-The whole brief in one line: **music you can lose to forty times without resenting it.**
-Nothing that demands attention, nothing with a hook that wears out, nothing that celebrates.
+## Set this up once
+
+- **Turn the Instrumental toggle ON.** That is why none of the strings below waste characters
+  saying "instrumental, no vocals".
+- Paste this into **Exclude styles** and leave it there for every track:
+
+```
+vocals, lyrics, drums, build-up, drop, EDM, orchestral swell, brass, distortion, fast tempo
+```
+
+- Every string is under 200 characters, so it fits the Style box in any Suno version.
+
+## What holds the score together
+
+Three things, and they matter more than the individual wording: **one key** (D minor
+throughout, F major only in the debrief), **one tempo family** (68–84 BPM), and **one
+instrument set** that each track adds a single voice to. Do not change the key or the tempo
+when you regenerate a track you are unhappy with — change the voice.
 
 ---
 
-## The house sound
+## 1. Main theme — generate this first
 
-Paste this into every prompt, then add the track's own line. Keeping it word-for-word is what
-makes seven separate generations sound like one score.
+Not a file. A melody the other tracks quote, so a game you replay forty times has one shape you
+come to recognise.
 
 ```
-instrumental, slow Nordic cinematic ambient, 76 BPM, D minor, felt piano and sustained warm
-pads, distant strings, soft tape hiss, light brushed percussion, patient and unhurried, cold
-clear mountain air, no vocals, no build, no drop, loops seamlessly
+slow Nordic cinematic ambient, 76 BPM, D minor, solo felt piano stating one simple six-note theme, warm pad beneath, distant strings entering late, spacious melancholy hopeful
 ```
 
-Three things hold it together, and all three matter more than the individual prompts:
-
-- **Same key.** D minor throughout, except the debrief which resolves into F major.
-- **Same tempo family.** 70–84 BPM. Nothing outside that.
-- **Same instrument set.** Felt piano, warm pad, distant strings. Each track adds *one* voice
-  of its own and leaves the rest alone.
+Ask for about 90 seconds. When you have one you like, **use Cover or Extend on it for `title`,
+`beacon` and `debrief`** rather than generating those from scratch. That is what carries the
+melody across the score instead of leaving you with three unrelated tunes.
 
 ---
 
-## The main theme
-
-Not a file of its own. It is a **melody** — five or six notes, slow, unhurried — that you write
-once and let the other tracks quote. `title` states it plainly, `beacon` hints at it under
-tension, `debrief` plays it one last time and lets it fall apart.
-
-This is the single highest-value thing you can do for the score. A game you replay forty times
-needs one shape you come to recognise, not seven pieces of wallpaper.
-
-Generate it as its own short piece first, then feed it to the others:
+## 2. `title.mp3` — the menu
 
 ```
-instrumental, slow Nordic cinematic ambient, 76 BPM, D minor, solo felt piano stating one
-simple memorable six-note theme, warm pad underneath, distant strings entering late, spacious
-and melancholy but hopeful, no percussion, no vocals, no build
-```
-
-Ask for about 90 seconds. When you have one you like, use Suno's **Cover** or **Extend** on it
-for `title`, `beacon` and `debrief` rather than generating those from scratch — that is what
-carries the melody across the score instead of three unrelated tunes.
-
----
-
-## `title.mp3` — the menu
-
-The one track allowed to be beautiful on purpose. It plays while someone reads *"Varje meter
-räknas"* and decides whether to go again.
-
-```
-[house sound] + full statement of the main theme, felt piano leading, strings swelling gently
-once and receding, dawn over a cold valley, hopeful, spacious
+slow Nordic cinematic ambient, 76 BPM, D minor, felt piano lead melody, warm pad, distant strings swelling once then receding, tape hiss, dawn over a cold valley, spacious hopeful
 ```
 
 About 2:30. Should feel like standing still, not like starting.
 
 ---
 
-## `valley.mp3` — the flight *(done)*
+## 3. `valley.mp3` — the flight *(you have this)*
 
-The reference track. Heard by far the longest — forty minutes of crashing happens over this, so
-it must not wear out and must not comment on how you are doing.
+Kept here in case you regenerate. Heard by far the longest, so it must not wear out.
 
-Keep whatever produced Valley 3. If you regenerate it, the shape that worked was: sustained
-pads, sparse piano, an arpeggio well back in the mix, almost hypnotic, no melody repeating
-often enough to notice.
+```
+slow Nordic cinematic ambient, 76 BPM, D minor, sustained warm pads, sparse felt piano, faint arpeggio deep in the mix, light brushed percussion, hypnotic patient, cold clear air
+```
 
-Longer is better. Four to five minutes.
+Four to five minutes. Longer is better.
 
 ---
 
-## `beacon.mp3` — the last stretch
-
-From 20 000 units in. Long way flown, close enough now to lose something real. More tension —
-but no triumph, because the twist has not landed yet.
+## 4. `beacon.mp3` — the last stretch
 
 ```
-[house sound] + low sustained strings, a single repeating piano figure, faint pulse underneath,
-the main theme implied but never resolved, held breath, focused, cold
+slow Nordic cinematic ambient, 80 BPM, D minor, low sustained strings, single repeating piano figure, faint pulse beneath, unresolved tension, held breath, cold focused, tape hiss
 ```
 
-The instruction that matters: **implied but never resolved.** If it resolves, the ending has
-nothing left to do.
+**Unresolved is the point.** If it resolves here, the ending has nothing left to do.
 
 ---
 
-## `shaft.mp3` — down in the shafts
-
-Below the rim, walls both sides, sky a long way up. The only track allowed to feel enclosed.
+## 5. `shaft.mp3` — down in the shafts
 
 ```
-[house sound] but darker and slower, 70 BPM, deep drone replacing the pad, sparse metallic
-resonances, slow reversed piano, distant dripping texture, cavernous and still, heavy without
-menace, no melody
+dark ambient, 70 BPM, D minor, deep drone, sparse metallic resonance, slow reversed piano, distant dripping texture, cavernous and still, heavy without menace, subterranean
 ```
 
 Two minutes is plenty — nobody stays down there long.
 
 ---
 
-## `debrief.mp3` — arriving home, and the turn
-
-Plays while the player learns the beacon was a scheduled test transmission and the two
-survivors had a car. It should start like an ending and quietly fail to be one.
+## 6. `debrief.mp3` — arriving home, and the turn
 
 ```
-[house sound] resolving to F major, 68 BPM, solo felt piano playing the main theme one last
-time, room tone, one soft string line entering late, tired and fond rather than triumphant,
-ending unresolved and slightly wry, no percussion
+slow ambient, 68 BPM, F major, solo felt piano playing one simple theme, room tone, one soft string line entering late, tired and fond, wry unresolved ending, tape hiss
 ```
 
-This one does not need to loop — it plays under text you read once.
+The only track that does not loop — it plays under text you read once.
 
 ---
 
-## `school.mp3` — flight school
-
-Lighter and a little sillier. Someone is learning to hover and failing at it.
+## 7. `school.mp3` — flight school
 
 ```
-[house sound] but warmer and lighter, 84 BPM, soft marimba or plucked synth carrying a small
-playful motif, encouraging and patient, gently comic, nothing tense
+light ambient, 84 BPM, D minor, soft marimba, plucked synth, warm pad, small playful motif, encouraging and patient, gently comic, tape hiss
 ```
 
 ---
 
-## `jungle.mp3` — Emerald Passage
-
-The one place that is not cold. Humid, green, close.
+## 8. `jungle.mp3` — Emerald Passage
 
 ```
-[house sound] but humid instead of alpine, 74 BPM, low flutes, damp percussion, wet reverb,
-insect texture far back, green and close and alive, denser than the alpine tracks but just as
-patient
+humid ambient, 74 BPM, D minor, low wooden flutes, damp percussion, wet reverb, insect texture far back, green close and alive, patient, tape hiss
 ```
 
 ---
 
-## Getting them in
+## Getting them into the game
 
-1. Export from Suno as **MP3**, 128–192 kbps, under about 4 MB.
-2. Name the file exactly as above and put it in `dist/music/`.
-3. Commit and push to `main`. The deploy picks it up automatically.
+No terminal needed:
 
-No code change needed. The game loads what is there and skips what is not, so add them one at a
-time and hear each one.
+1. **github.com/Nomarcus/Flyin-over-it** → open **`dist/music`**
+2. **Add file → Upload files**
+3. Drop the mp3s in, named exactly `title.mp3`, `valley.mp3`, `beacon.mp3`, `shaft.mp3`,
+   `debrief.mp3`, `school.mp3`, `jungle.mp3`
+4. **Commit changes** to `main`
 
-## Two things to watch when generating
+The deploy runs itself and the game picks them up. Add them one at a time if you like — a
+missing file is skipped and falls back to another track.
 
-- **Write endings that flow back into the opening.** Every track except `debrief` loops. The
-  game dips the level across the seam to hide the mp3 gap, but a hard stop is still audible.
-- **Mix it a touch quiet.** The rotor drone and the radio voice sit on top of the music, and
-  Suno tends to master loud.
+Only `title` and `valley` really matter. Everything else falls back to those.
+
+## Two things when exporting
+
+- **MP3**, 128–192 kbps, under about 4 MB. They are downloaded over mobile data.
+- **Endings that flow back into the opening.** Everything except `debrief` loops. The game dips
+  the level across the seam to hide the mp3 gap, but a hard stop is still audible.
+- Suno masters loud. If a track feels like it is sitting on top of the rotor and the radio
+  rather than under them, pull the music slider down in **INSTÄLLNINGAR** rather than
+  regenerating.
 
 ## How it behaves in game
 
