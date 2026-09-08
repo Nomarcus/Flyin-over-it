@@ -48,10 +48,10 @@ const screenGrads={key:'',map:{}};
 function screenGrad(name,make){const key=Math.round(vw)+'x'+Math.round(vh);
  if(screenGrads.key!==key){screenGrads.key=key;screenGrads.map={}}
  return screenGrads.map[name]??=make();}
-function resize(){dpr=Math.min(2,window.devicePixelRatio||1);const top=54,bottom=78,available=Math.max(120,innerHeight-top-bottom);
+function resize(){dpr=Math.min(2,window.devicePixelRatio||1);const top=54,bottom=12,available=Math.max(120,innerHeight-top-bottom);
  // Landscape keeps the tuned 400-unit world height. Taller-than-wide screens grow the
  // world box instead of shrinking the picture, so portrait fills the screen too.
- baseVw=Math.max(500,innerWidth*400/available);baseVh=clamp(available*baseVw/innerWidth,400,900);
+ baseVw=Math.max(500,innerWidth*400/available);baseVh=clamp(available*baseVw/innerWidth,400,1100);
  baseScale=Math.min(innerWidth/baseVw,available/baseVh);
  ox=(innerWidth-baseVw*baseScale)/2;oy=top+(available-baseVh*baseScale)/2;applyView();canvas.width=Math.round(innerWidth*dpr);canvas.height=Math.round(innerHeight*dpr);}
 addEventListener('resize',resize);if(window.visualViewport)visualViewport.addEventListener('resize',resize);

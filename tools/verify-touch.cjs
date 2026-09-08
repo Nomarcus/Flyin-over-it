@@ -19,8 +19,13 @@ emit('winchBtn','pointerdown',5,700);assert(a.keys.KeyE);emit('winchBtn','pointe
 emit('flightLeft','pointerdown',7,100);emit('flightLeft','pointerdown',8,110);emit('flightLeft','lostpointercapture',7,100);assert.equal(a.touchAxes().x,-1,'Second same-side finger preserved');a.clearInput();assert.equal(a.touchAxes().x,0);
 for(let i=0;i<8;i++){a.loadLevel(i);a.begin();const state=a.get();assert.equal(state.enemies.length,0);assert(!state.boss);a.keys.Space=true;a.edges.KeyR=true;a.updateWeapons(.1);assert.equal(state.bullets.length,0);assert.equal(state.rockets.length,0);state.people.forEach(p=>p.status='aboard');state.heli.carrying=state.people.length;if(state.cargo)state.cargo.status='delivered';if(i<7){step(1.8);assert.equal(a.get().mode,'debrief','Peaceful mission '+i+' finishes');}}
 
-a.startLost(true);a.begin();let craft=a.get().heli;craft.x=2200;craft.y=25;craft.landed=false;step(.05);let view=a.get();assert(view.heli.y-view.cameraY>=119,'Rotor has top clearance');assert(view.heli.x-view.camera>=129,'Side clearance');assert(view.oy>=54,'Canvas below status rail');assert(view.oy+view.vh*view.scale<=sandbox.innerHeight-77,'Canvas above controls');
-sandbox.innerWidth=844;sandbox.innerHeight=390;a.resize();view=a.get();assert(view.oy>=54);assert(view.oy+view.vh*view.scale<=313);a.render();
+a.startLost(true);a.begin();let craft=a.get().heli;craft.x=2200;craft.y=25;craft.landed=false;step(.05);let view=a.get();assert(view.heli.y-view.cameraY>=119,'Rotor has top clearance');assert(view.heli.x-view.camera>=129,'Side clearance');assert(view.oy>=54,'Canvas below status rail');assert(view.oy+view.vh*view.scale<=sandbox.innerHeight-11,'Canvas within the bottom margin');
+sandbox.innerWidth=844;sandbox.innerHeight=390;a.resize();view=a.get();assert(view.oy>=54);assert(view.oy+view.vh*view.scale<=379);
+// The picture must claim nearly everything below the instrument rail: a reserved control
+// rail used to eat a fifth of a landscape phone before the winch button was made to float.
+const drawnLandscape=view.vh*view.scale;
+assert(drawnLandscape>=390-54-13,'Landscape picture fills below the rail, drew '+Math.round(drawnLandscape)+' of '+(390-54-12));
+a.render();
 // Long-valley checkpoints must save and restore beyond the original four pads.
 a.startLost(true);a.begin();h=a.get().heli;
 assert.equal(a.get().L.length,26000);assert(a.get().people.every(p=>p.x>25000));
@@ -51,10 +56,10 @@ console.log('PASS: retained momentum, controlled countersteering, bounded attitu
 
 // Portrait fills the screen: the world box grows instead of the picture shrinking into bars.
 sandbox.innerWidth=390;sandbox.innerHeight=844;a.resize();let portrait=a.get();
-const availableH=844-54-78,drawn=portrait.baseVh*(portrait.scale*portrait.zoom);
+const availableH=844-54-12,drawn=portrait.baseVh*(portrait.scale*portrait.zoom);
 assert(portrait.baseVh>600,'Portrait grows the world box, got '+portrait.baseVh);
 assert(drawn>=availableH*.95,'Portrait fills the flight area, drew '+Math.round(drawn)+' of '+availableH);
-assert(portrait.oy>=54&&portrait.oy+drawn<=844-77,'Portrait canvas stays inside the rails');
+assert(portrait.oy>=54&&portrait.oy+drawn<=844-11,'Portrait canvas stays inside the rails');
 sandbox.innerWidth=1440;sandbox.innerHeight=900;a.resize();
 console.log('PASS: portrait fills the flight area without letterboxing');
 

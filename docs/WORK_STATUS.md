@@ -33,6 +33,19 @@ This pass reworked the camera and the HUD.
   and the combat buttons. `drawMap` is gone.
 - Narrow screens drop the aboard counter and move bearing/range to a tab under the rail.
 
+## Screen budget
+
+- The winch button used to sit in a reserved 78px rail. On a landscape phone that was a fifth
+  of the screen spent on flat black. It now floats over the picture as a compact pill in the
+  dead zone between the two tilt halves, with a touch target larger than the pill it draws,
+  and resize() reserves only a 12px bottom margin. The flight picture grew by roughly a
+  quarter in landscape.
+- The world-height cap rose to 1100 so portrait can still fill the taller area without
+  letterboxing.
+- The route summary is hidden on phones: the bearing and range are in the instrument rail, the
+  progress is in the valley strip, and the run stats are in the pause menu. Desktop keeps it.
+- The valley strip moved under the instrument rail, below the bearing tab on narrow screens.
+
 ## In-world guides
 
 - Altitude ladder along the right edge, reading the same height above ground as the rail:

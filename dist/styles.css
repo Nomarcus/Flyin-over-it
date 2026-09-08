@@ -159,3 +159,57 @@
  #hud #warning{animation:none}
  #valleyRail .mark,#valleyRail .pad,#hud #tip,#hud #radio,#compactHud u,.gauge em{transition:none}
 }
+
+/* --- Give the picture the bottom back. ------------------------------------------------
+   The winch used to sit in a reserved 78px rail, which on a landscape phone ate a fifth of
+   the screen as flat black. It now floats over the picture as a compact pill in the dead
+   zone between the two tilt halves, and resize() reserves only a thin bottom margin. */
+.flightHalf{top:54px;bottom:0}
+
+#mobile .actions{left:50%;right:auto;transform:translateX(-50%);
+ bottom:max(12px,env(safe-area-inset-bottom));width:auto;height:auto;pointer-events:none}
+#mobile #winchBtn{position:relative;left:auto;right:auto;bottom:auto;
+ width:96px;height:44px;border-radius:22px;font-size:12px;letter-spacing:1.4px;
+ background:#0e2a2ab8;border:1px solid #b9e1cb55;color:#dcefdd;
+ box-shadow:0 3px 14px #0005;backdrop-filter:blur(7px)}
+#mobile #winchBtn span{display:none}
+#mobile #winchBtn.active{background:#bcdfc4e8;border-color:#e0f0d9;color:#0f2b28;box-shadow:0 3px 16px #0006}
+
+/* Route strip moves under the instrument rail; the bottom is now the winch's alone. */
+#hud #valleyRail{top:56px;bottom:auto;height:14px}
+#hud #targetGuide{bottom:66px}
+#hud #tip{top:76px;bottom:auto}
+#hud #warning{top:76px;bottom:auto}
+#hud #radio{bottom:66px}
+#hud #lostStatus:not([hidden]){top:78px}
+
+@media(max-width:620px){
+ #hud #valleyRail{top:54px;height:12px}
+ #hud #targetGuide{bottom:64px}
+ #hud #tip{top:72px}
+ #hud #warning{top:72px}
+}
+/* Short landscape: the rail sits beside the bearing tab rather than under it. */
+@media(max-height:520px){
+ #hud #valleyRail{top:56px;height:12px}
+ #hud #targetGuide{bottom:62px}
+ #hud #tip{top:72px}
+ #hud #warning{top:72px}
+ #hud #radio{bottom:62px}
+ #mobile #winchBtn{width:88px;height:40px;font-size:11px}
+}
+
+/* Narrow screens put the bearing on its own tab under the rail, so the route strip and the
+   coaching line have to start below it rather than on top of it. */
+@media(max-width:620px){
+ #hud #valleyRail{top:80px;height:12px}
+ #hud #tip{top:98px}
+ #hud #warning{top:98px}
+}
+/* A bigger thumb target than the pill it draws: easier to hit, no extra ink. */
+#mobile #winchBtn::before{content:'';position:absolute;inset:-14px -20px;border-radius:34px}
+
+/* On a phone the route summary is pure duplication: the bearing and range sit in the rail,
+   the progress sits in the valley strip, and the run stats are in the pause menu. Drop it and
+   give the picture the space. Desktop has room, so it keeps it. */
+@media(max-width:620px){#hud #lostStatus:not([hidden]){display:none}}
