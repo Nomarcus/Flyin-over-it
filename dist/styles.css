@@ -21,7 +21,7 @@
 #mobile #hoverBtn{left:94px;right:auto;bottom:0;width:86px;height:55px}
 
 /* Reserved HUD rails: flight canvas occupies the clear area between them. */
-#hud .flightpanel,#hud .telemetry,#hud .missionpanel,#hud #minimap,#hud #lostStatus,#hud #radio,#hud #tip,#hud #warning,#hud #targetGuide,#hud #bossPanel{display:none!important}
+#hud #lostStatus[hidden]{display:none!important}
 #compactHud{position:absolute;top:0;left:max(12px,env(safe-area-inset-left));right:68px;height:54px;display:flex;align-items:center;gap:22px;font:11px ui-monospace,monospace;letter-spacing:.5px;color:#bdd3cf;white-space:nowrap;text-shadow:none}
 #compactGoal{margin-left:auto;color:#e9c07c}
 #toolbar{top:6px!important;right:max(10px,env(safe-area-inset-right))!important;bottom:auto!important;max-width:none!important}
@@ -68,3 +68,44 @@
 
 /* One main flight, with practice and settings as secondary choices. */
 #freshLostBtn,#startBtn,#jungleBtn{display:none}.intro .missionteaser{margin-top:20px}.intro .quiet{margin-right:5px}#schoolBtn{font-size:14px}
+
+
+/* --- Instrument rail: hull, fuel, height above ground, souls aboard, bearing + range. --- */
+#compactAlt b{color:#e7efe3}
+#compactHud>span.alert small{color:#ffb69a}
+#compactHud>span.alert b{color:#ffb69a}
+#compactHud>span.alert u{background:#ff9d78}
+#compactGoal{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* --- Flight feedback lives over the picture, not in a side panel. --- */
+#hud #targetGuide,#hud #tip,#hud #warning,#hud #radio{position:absolute;pointer-events:none}
+#hud #targetGuide{left:50%;transform:translateX(-50%);bottom:92px;top:auto;width:auto;max-width:74%;
+ font-size:12px;letter-spacing:1.4px;color:#f0d4a2;background:#08202bb8;border:1px solid #e9c07c33;
+ border-radius:6px;padding:8px 15px;backdrop-filter:blur(6px)}
+#hud #targetGuide:empty{display:none}
+#hud #tip{left:50%;transform:translateX(-50%);top:auto;bottom:132px;max-width:74%;width:max-content;
+ font-size:12px;line-height:1.5;color:#d3e3e4;background:#08202bb8;border-radius:6px;padding:8px 14px;backdrop-filter:blur(6px)}
+#hud #warning{left:50%;transform:translateX(-50%);bottom:auto;top:68px;color:#ffb69a;font-size:12px;
+ font-weight:700;letter-spacing:2.5px;white-space:nowrap;animation:pulse 1.15s ease-in-out infinite}
+#hud #warning:empty{display:none}
+@keyframes pulse{50%{opacity:.42}}
+#hud #radio{left:max(16px,env(safe-area-inset-left));right:auto;top:auto;bottom:92px;max-width:min(300px,42vw);
+ border-left:2px solid var(--accent);padding-left:11px;transition:opacity .3s}
+#hud #lostStatus:not([hidden]){top:64px;font-size:11px;padding:7px 13px;max-width:70%}
+
+/* Narrow phones: bearing and range matter more than the aboard counter. */
+@media(max-width:620px){
+ #hud #compactHud>#compactPeople{display:none}
+ #hud #compactGoal{display:block;position:absolute;left:0;top:54px;margin:0;font-size:11px;
+  letter-spacing:.4px;padding:5px 11px;background:#08202bcc;border-radius:0 0 9px 0;backdrop-filter:blur(6px)}
+ #hud #lostStatus:not([hidden]){top:92px}
+ #hud #targetGuide{font-size:10px;letter-spacing:.8px;padding:7px 11px;max-width:88%}
+ #hud #warning{font-size:10px;letter-spacing:1.5px;top:64px}
+ #hud #radio{display:none}
+}
+/* Portrait: the world box is tall, so keep the overlays off the flight path. */
+@media(max-width:520px) and (min-height:640px){
+ #hud #tip{bottom:126px;font-size:11px}
+ #hud #targetGuide{bottom:88px}
+ #hud #warning{top:64px}
+}

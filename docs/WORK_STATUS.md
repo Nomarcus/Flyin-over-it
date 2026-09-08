@@ -1,12 +1,46 @@
 # Current state — 8 September 2026
 
-Flyin Over It is a 2D/2.5D rescue flight game. The latest version restores the early damped flight spring, rotor response and air resistance, while preserving two-hand touch control, gyro input and the segmented winch rope.
+Flyin Over It is a 2D/2.5D rescue flight game. The flight model is unchanged: damped spring,
+rotor response, air resistance, two-hand touch control, gyro input and a segmented winch rope.
+This pass reworked the camera and the HUD.
 
-- The Lost Valley: 26,000 world units, 11 checkpoint stations, two people at the far beacon, then return home.
-- Open sky without an artificial height ceiling; camera follows altitude.
-- Close camera and compact instrument HUD.
-- No active combat. Legacy 3D prototype is retained in dist/flight3d.* but is not the main game.
-- Current checks: npm test. verify-game.cjs is historical and includes obsolete combat/depth assertions; it is not the current regression suite.
-- Tests use a simulated DOM and native Canvas. Physical iPhone gyro and full-route human playtesting remain outstanding.
+## Camera
 
-IMPOSSIBLE_FLIGHT_PLAN.md is a historical design document. This current state takes precedence over its earlier combat and difficulty ideas.
+- The world box is sized from the screen. Landscape keeps the tuned 400-unit world height;
+  taller-than-wide screens grow the box instead of letterboxing, so portrait now fills the
+  flight area rather than showing a strip between black bars.
+- `zoom` widens the world box with height above ground so the valley floor stays inside the
+  frame while climbing. It saturates at 2x, past which the floor is allowed to leave rather
+  than shrinking the craft to nothing. It pulls back fast (3.4/s) and settles in slowly (1/s)
+  so level flight never breathes, and resets on mission load and checkpoint restore.
+- Zoom scales the world box and the draw scale by the same factor, so the on-screen rectangle
+  never moves — only how much world fits inside it.
+- The craft sits below centre with roughly constant room beneath it, so a tall portrait box
+  shows more sky instead of more underground rock.
+- Vertical lead (`rise`) makes a climb read as motion; horizontal lead now scales with the
+  viewport so wide screens see further ahead.
+
+## HUD
+
+- One instrument rail: hull, fuel, height above ground, souls aboard, and bearing plus range
+  to the objective. Height and range were previously computed but written only to elements
+  that CSS had hidden.
+- Radio, tips, warnings and the target guide are visible again over the flight picture. A
+  blanket `display:none` rule had disabled every one of them while `updateHUD` kept writing
+  to them each tick.
+- Removed the dead panels entirely: flight panel, mission panel, telemetry grid, boss panel,
+  minimap (and its per-tick canvas redraw), depth readout and controls, the unused joystick,
+  and the combat buttons. `drawMap` is gone.
+- Narrow screens drop the aboard counter and move bearing/range to a tab under the rail.
+
+## Testing
+
+- `npm test` — 8 suites, including new coverage for portrait fill, altitude zoom-out framing,
+  zoom saturation, and the instrument rail contents.
+- Verified in Chromium at 1440x900, 844x390 and 390x844: no page errors, and all four entry
+  points (Lost Valley, campaign, flight school, jungle) run clean through pause and settings.
+- Physical iPhone gyro and full-route human playtesting remain outstanding.
+
+`verify-game.cjs` is historical and includes obsolete combat/depth assertions; it is not the
+current regression suite. `IMPOSSIBLE_FLIGHT_PLAN.md` is a historical design document — this
+file takes precedence.

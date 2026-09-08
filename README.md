@@ -25,7 +25,11 @@ Then open http://localhost:8000. Mobile sensor permissions require a secure HTTP
 
 - Original smooth 2.5D flight feel with inertia and countersteering.
 - Long Valley: 26,000 world units, 11 checkpoint stations, far-beacon rescue and return flight.
-- No invisible altitude ceiling; close follow camera and compact HUD.
+- No invisible altitude ceiling. The camera pulls back as you climb so the valley floor stays
+  in frame, and leads both your climb and your speed.
+- Fills the screen in portrait as well as landscape.
+- One instrument rail: hull, fuel, height above ground, souls aboard, bearing and range.
+- Radio calls, tips and warnings appear over the flight picture.
 - Clean, unobstructed mobile interface and no active combat.
 
 ## Tests
