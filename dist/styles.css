@@ -111,7 +111,8 @@
 }
 
 /* --- Valley rail: the whole route on one line, along the bottom of the flight picture. --- */
-#hud #valleyRail{position:absolute;left:6%;right:6%;bottom:82px;height:16px;pointer-events:none}
+#hud #valleyRail{position:absolute;bottom:82px;height:16px;pointer-events:none;
+ left:max(6%,env(safe-area-inset-left));right:max(6%,env(safe-area-inset-right))}
 #hud #valleyRail:before{content:'';position:absolute;left:0;right:0;top:7px;height:2px;
  background:linear-gradient(90deg,#b8d2d216,#b8d2d232 12%,#b8d2d232 88%,#e9c07c4d);border-radius:2px}
 #valleyRail .pad{position:absolute;top:4px;width:2px;height:8px;margin-left:-1px;
@@ -125,7 +126,8 @@
 #hud #targetGuide{bottom:106px}
 #hud #tip{bottom:148px}
 @media(max-width:620px){
- #hud #valleyRail{left:4%;right:4%;bottom:80px}
+ #hud #valleyRail{bottom:80px;
+  left:max(4%,env(safe-area-inset-left));right:max(4%,env(safe-area-inset-right))}
  #hud #targetGuide{bottom:102px}
  #hud #tip{bottom:140px;font-size:11px}
 }
