@@ -103,7 +103,9 @@ function makeWorld(){const rng=seeded(L.seed);obstacles=[];if(L.lost)obstacles=[
   o.y=highest-o.gap-o.h-(o.drip||0);
  }scenery=[];for(let x=690;x<L.length-120;x+=40+rng()*95){scenery.push({x,y:ground(x),s:.7+rng()*1.1,type:rng()>.26?'tree':'rock',variant:rng(),depth:rng()})}if(L.theme==='jungle')for(const t of scenery)if(t.x>1810&&t.x<2990){t.type='rock';t.s*=.65;}clouds=Array.from({length:12},()=>({x:rng()*5000,y:45+rng()*240,w:130+rng()*190,a:.04+rng()*.07}));}
 function newHeli(){return{x:390,z:0,vz:0,y:ground(390)-30.8,vx:0,vy:0,angle:0,av:0,collective:0,dir:1,hp:100,fuel:100,rockets:8,flares:4,heat:0,overheated:false,landed:true,airborne:false,rotor:0,spool:.25,turn:0,yaw:0,yawTarget:0,cyclic:0,bank:0,hitCd:0,rope:0,ropeAngle:0,ropeV:0,ropeNodes:[],ropeMount:null,ropeTension:0,ropeSupport:1,ropeTarget:null,carrying:0,delivered:0,hookX:390,hookY:ground(390)-4,dents:[],hoverY:0,brake:false,nearGround:0,compression:0};}
-function loadLevel(i,play=true){lost.active=false;$('lostStatus').hidden=true;document.body?.classList.remove('lostMode');$('skipSchool').hidden=true;$('retrySchool').hidden=true;school={active:false,stage:0,hold:0};precision={hold:0,approach:0,fast:false,targets:new Set(),landings:new Set()};level=i;L={...levels[i],guns:[],boss:false,clear:false};if(!L.lost){L.brief='Flyg varsamt, hjälp besättningen och återvänd till basen.';L.objective=L.cargo?'Leverera lasten och rädda alla till basen.':'Rädda alla och återvänd till basen.';}makeWorld();heli=newHeli();time=0;score=0;zoom=1;applyView();for(const k in hudCache)delete hudCache[k];buildValleyRail();camera=0;cameraY=heli.y-vh*.5;shake=damageFlash=0;gunCd=rocketCd=flareCd=muzzle=0;unload=service=0;wind=0;missionKills=landings=crashHits=perfectPickups=0;hoverMode=false;tutorial=0;radioTimer=0;warningTimer=0;combo=0;comboTimer=0;hudTimer=0;
+function loadLevel(i,play=true){lost.active=false;$('lostStatus').hidden=true;document.body?.classList.remove('lostMode');$('skipSchool').hidden=true;$('retrySchool').hidden=true;school={active:false,stage:0,hold:0};precision={hold:0,approach:0,fast:false,targets:new Set(),landings:new Set()};level=i;L={...levels[i],guns:[],boss:false,clear:false};if(!L.lost){L.brief='Flyg varsamt, hjälp besättningen och återvänd till basen.';L.objective=L.cargo?'Leverera lasten och rädda alla till basen.':'Rädda alla och återvänd till basen.';}makeWorld();
+ stars=L.lost?lostShafts.map(x=>({x,y:ground(x)-60,taken:false})):[];
+ heli=newHeli();time=0;score=0;zoom=1;applyView();for(const k in hudCache)delete hudCache[k];buildValleyRail();camera=0;cameraY=heli.y-vh*.5;shake=damageFlash=0;gunCd=rocketCd=flareCd=muzzle=0;unload=service=0;wind=0;missionKills=landings=crashHits=perfectPickups=0;hoverMode=false;tutorial=0;radioTimer=0;warningTimer=0;combo=0;comboTimer=0;hudTimer=0;
  people=L.people.map((x,j)=>({x,y:ground(x)-8,homeX:x,status:'waiting',phase:j*1.7}));enemies=L.guns.map((e,j)=>({...e,y:ground(e.x)-15,hp:e.type==='missile'?55:42,max:e.type==='missile'?55:42,cd:2+j*.7,aim:-Math.PI/2,flash:0,warn:0}));
  cargo=L.cargo?{x:L.cargo.x,y:ground(L.cargo.x)-14,status:'waiting',to:L.cargo.to}:null;
  boss=L.boss?{x:L.length-1100,y:210,hp:270,max:270,cd:1.8,missileCd:7,t:0,active:false,flash:0}:null;
@@ -269,7 +271,7 @@ function updateProjectiles(dt){for(const b of bullets){if(b.life<=0)continue;if(
  for(const m of missiles){if(m.life<=0)continue;m.life-=dt;m.z=m.z||0;m.vz=m.vz||0;if(!m.decoy){const f=decoys.find(f=>f.life>0&&Math.hypot(f.x-m.x,f.y-m.y,(f.z||0)-m.z)<420);if(f)m.decoy=f}const target=m.decoy||heli;let dx=target.x-m.x,dy=target.y-m.y,dz=(target.z||0)-m.z,len=Math.hypot(dx,dy,dz)||1;m.vz=damp(m.vz,dz/len*225,1.8,dt);m.z+=m.vz*dt;m.vx=damp(m.vx,dx/len*225,1.8,dt);m.vy=damp(m.vy,dy/len*225,1.8,dt);m.px=m.x;m.py=m.y;m.x+=m.vx*dt;m.y+=m.vy*dt;m.trail-=dt;if(m.trail<0){smoke(m.x,m.y,3,.45,'#b6beb8',m.z);m.trail=.05;}if(m.decoy&&len<22){m.life=0;explode(m.x,m.y,.45,m.z);score+=40;}else if(!m.decoy&&Math.abs(m.z-heli.z)<20&&segmentDist(m.px,m.py,m.x,m.y,heli.x,heli.y)<26){m.life=0;hitHeli(22);explode(m.x,m.y,.65,m.z)}if(blocked(m.px,m.py,m.x,m.y)||m.y>ground(m.x)){m.life=0;explode(m.x,m.y,.55,m.z)}}
  bullets=bullets.filter(b=>b.life>0&&b.y>-100);rockets=rockets.filter(r=>r.life>0&&r.y>-150);missiles=missiles.filter(m=>m.life>0);}
 function killBoss(){explode(boss.x,boss.y,2.1);score+=2200;popup(boss.x,boss.y-55,'HEAVY GUNSHIP +2 200');radio('Gunship utslagen! Hämta de sista och kom hem.',6);for(let i=0;i<6;i++)debris.push({x:boss.x+rand(-50,50),y:boss.y,vx:rand(-100,100),vy:rand(-80,0),s:rand(.3,.7),type:'falling'});}
-function updateEffects(dt){shake*=Math.exp(-6*dt);damageFlash=Math.max(0,damageFlash-dt);for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=(p.kind==='dust'?8:180)*dt;p.vx*=Math.exp(-.5*dt);p.life-=dt;p.angle+=dt*2;}particles=particles.filter(p=>p.life>0);for(const s of smokes){s.x+=(s.vx+wind*.4)*dt;s.y-=dt*18;s.size+=dt*16;s.life-=dt;}smokes=smokes.filter(s=>s.life>0);for(const b of bursts){b.r+=dt*100*b.power;b.life-=dt;}bursts=bursts.filter(b=>b.life>0);for(const f of decoys){f.x+=f.vx*dt;f.y+=f.vy*dt;f.vy+=55*dt;f.life-=dt;if(Math.random()<dt*25)addParticle(f.x,f.y,rand(-10,10),rand(-20,10),'#fff0b4',2,.35,'spark',f.z||0)}decoys=decoys.filter(f=>f.life>0);for(const t of texts){t.y-=dt*25;t.life-=dt}texts=texts.filter(t=>t.life>0);for(const d of debris){
+function updateEffects(dt){shake*=Math.exp(-6*dt);damageFlash=Math.max(0,damageFlash-dt);for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=(p.kind==='dust'?8:180)*dt;p.vx*=Math.exp(-.5*dt);p.life-=dt;p.angle+=dt*2;}particles=particles.filter(p=>p.life>0);for(const s of smokes){s.x+=(s.vx+wind*.4)*dt;s.y-=dt*18;s.size+=dt*16;s.life-=dt;}smokes=smokes.filter(s=>s.life>0);for(const b of bursts){b.r+=dt*100*b.power;b.life-=dt;}bursts=bursts.filter(b=>b.life>0);for(const f of decoys){f.x+=f.vx*dt;f.y+=f.vy*dt;f.vy+=55*dt;f.life-=dt;if(Math.random()<dt*25)addParticle(f.x,f.y,rand(-10,10),rand(-20,10),'#fff0b4',2,.35,'spark',f.z||0)}decoys=decoys.filter(f=>f.life>0);if(mode!=='playing'||school.active)for(const t of texts){t.y-=dt*25;t.life-=dt}texts=texts.filter(t=>t.life>0);for(const d of debris){
   if(d.type==='falling'){d.x+=d.vx*dt;d.y+=d.vy*dt;d.vy+=250*dt;if(d.y>ground(d.x)){d.y=ground(d.x);d.type='wreck';smoke(d.x,d.y,15,1.4);}}
   else if(d.type==='rotor'||d.type==='panel'){
    d.x+=d.vx*dt;d.y+=d.vy*dt;d.vy+=250*dt;d.vx-=d.vx*.35*dt;d.rot+=d.spin*dt;
@@ -286,13 +288,8 @@ function poly(points,fill,stroke){ctx.beginPath();points.forEach((p,i)=>i?ctx.li
 function line(x1,y1,x2,y2,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
 function ellipse(x,y,rx,ry,color){ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,Math.max(.01,rx),Math.max(.01,ry),0,0,TAU);ctx.fill()}
 function label(text,x,y,color='#d7e5df',size=11,align='center'){
- let fade=1;
- if(mode==='playing'){
-  if(Math.abs(x-heli.x)<150&&Math.abs(y-heli.y)<100)return;
-  fade=clamp(1.35-Math.abs(x-heli.x)/(vw*.40),0,1);
-  if(fade<=.02)return;
- }
- ctx.save();ctx.globalAlpha=fade;const px=size*1.92/scale;ctx.font=`${size<12?'600':'500'} ${px}px ui-monospace,monospace`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(text,x,y);ctx.restore();ctx.textAlign='left'}
+ if(mode==='playing'&&!school.active)return;
+ ctx.save();const px=size*1.92/scale;ctx.font=`${size<12?'600':'500'} ${px}px ui-monospace,monospace`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(text,x,y);ctx.restore();ctx.textAlign='left'}
 function glow(x,y,r,color){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2)}
 function palette(){const night=L.theme==='night',snow=L.theme==='snow',sun=L.theme==='sunset';return{top:snow?'#b7cace':night?'#244251':sun?'#776345':'#57726c',edge:snow?'#e4eddf':night?'#547683':sun?'#b19361':'#9ea88a',front:snow?'#506776':night?'#142b3b':sun?'#433f36':'#304955',facet:snow?'#657e87':night?'#1c3543':sun?'#585044':'#3f5961',tree:snow?'#547879':night?'#1d3f4b':'#35645e',treeLight:snow?'#acc8c5':night?'#335666':'#577e6a',night,snow};}
 // Keep the original 720-unit backdrop composition while the flight camera zooms in.
@@ -639,8 +636,14 @@ function drawFlightInstruments(){
  poly([[x+vw*.006,my],[x-vw*.015,my-vh*.017],[x-vw*.015,my+vh*.017]],!heli.landed&&agl<45?'#ffb69a':'#e9c07c');
  ctx.restore();ctx.textAlign='center';
 }
-function drawEffects(){ctx.save();ctx.globalCompositeOperation='screen';for(const b of bursts){const r=110*b.power;glow(b.x,ground(b.x),r,'#ffb45024');}for(const e of enemies){if(e.hp<=0&&Math.abs(e.x-camera-vw/2)<vw){const flicker=.5+.5*Math.sin(visualTime*8+e.x);glow(e.x,e.y-12,35+flicker*12,'#e8a14c15');}}ctx.restore();for(const s of smokes)atDepth(s.z||0,()=>{ctx.globalAlpha=Math.max(0,s.life/s.max)*.4;ellipse(s.x,s.y,s.size,s.size*.75,s.color);});ctx.globalAlpha=1;for(const b of bursts)atDepth(b.z||0,()=>{const a=b.life/b.max;glow(b.x,b.y,b.r*2,'#ffc77766');ellipse(b.x,b.y,b.r*a,b.r*a*.85,a>.55?'#fff1b8':'#eaa057');ctx.strokeStyle=`rgba(241,202,132,${a*.6})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(b.x,b.y,b.r*1.7,0,TAU);ctx.stroke();});for(const p of particles)atDepth(p.z||0,()=>{ctx.globalAlpha=clamp(p.life/p.max,0,1);if(p.kind==='dust')ellipse(p.x,p.y,p.size*1.6,p.size,p.color);else{ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);ctx.fillStyle=p.color;ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size);ctx.restore()}});ctx.globalAlpha=1;
- for(const b of bullets)atDepth(b.z||0,()=>line(b.x-b.vx*.019,b.y-b.vy*.019,b.x,b.y,b.enemy?'#f0a17d':'#ffdfa0',b.enemy?2:2.5));for(const r of rockets)atDepth(r.z||0,()=>{ctx.save();ctx.translate(r.x,r.y);ctx.rotate(Math.atan2(r.dy,r.dx));ctx.fillStyle='#d6d9bc';ctx.fillRect(-8,-2,15,4);poly([[7,-3],[12,0],[7,3]],'#526774');poly([[-8,-3],[-22,0],[-8,3]],'#f0b967');ctx.restore()});for(const m of missiles)atDepth(m.z||0,()=>{ctx.save();ctx.translate(m.x,m.y);ctx.rotate(Math.atan2(m.vy,m.vx));ctx.fillStyle='#d8b993';ctx.fillRect(-7,-2,14,4);poly([[-8,-3],[-17,0],[-8,3]],'#ff9c61');ctx.restore()});for(const f of decoys)atDepth(f.z||0,()=>{glow(f.x,f.y,18,'#ffd59477');ellipse(f.x,f.y,2.5,2.5,'#fff1b9')});for(const t of texts){ctx.globalAlpha=clamp(t.life,.01,1);label(t.text,t.x,t.y,t.color,11);}ctx.globalAlpha=1;}
+function drawEffects(){ctx.save();ctx.globalCompositeOperation='screen';for(const b of bursts){const r=110*b.power;glow(b.x,ground(b.x),r,'#ffb45024');}for(const e of enemies){if(e.hp<=0&&Math.abs(e.x-camera-vw/2)<vw){const flicker=.5+.5*Math.sin(visualTime*8+e.x);glow(e.x,e.y-12,35+flicker*12,'#e8a14c15');}}ctx.restore();for(const s of smokes)atDepth(s.z||0,()=>{
+  const age=1-clamp(s.life/s.max,0,1),r=s.size*(.55+age*1.9);
+  const g=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,r);
+  g.addColorStop(0,s.color);g.addColorStop(.55,s.color);g.addColorStop(1,s.color.slice(0,7)+'00');
+  ctx.globalAlpha=Math.max(0,Math.sin(clamp(s.life/s.max,0,1)*Math.PI*.85))*.30;
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(s.x,s.y,r,r*.8,0,0,TAU);ctx.fill();
+ });ctx.globalAlpha=1;for(const b of bursts)atDepth(b.z||0,()=>{const a=b.life/b.max;glow(b.x,b.y,b.r*2,'#ffc77766');ellipse(b.x,b.y,b.r*a,b.r*a*.85,a>.55?'#fff1b8':'#eaa057');ctx.strokeStyle=`rgba(241,202,132,${a*.6})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(b.x,b.y,b.r*1.7,0,TAU);ctx.stroke();});for(const p of particles)atDepth(p.z||0,()=>{ctx.globalAlpha=clamp(p.life/p.max,0,1);if(p.kind==='dust')ellipse(p.x,p.y,p.size*1.6,p.size,p.color);else{ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);ctx.fillStyle=p.color;ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size);ctx.restore()}});ctx.globalAlpha=1;
+ for(const b of bullets)atDepth(b.z||0,()=>line(b.x-b.vx*.019,b.y-b.vy*.019,b.x,b.y,b.enemy?'#f0a17d':'#ffdfa0',b.enemy?2:2.5));for(const r of rockets)atDepth(r.z||0,()=>{ctx.save();ctx.translate(r.x,r.y);ctx.rotate(Math.atan2(r.dy,r.dx));ctx.fillStyle='#d6d9bc';ctx.fillRect(-8,-2,15,4);poly([[7,-3],[12,0],[7,3]],'#526774');poly([[-8,-3],[-22,0],[-8,3]],'#f0b967');ctx.restore()});for(const m of missiles)atDepth(m.z||0,()=>{ctx.save();ctx.translate(m.x,m.y);ctx.rotate(Math.atan2(m.vy,m.vx));ctx.fillStyle='#d8b993';ctx.fillRect(-7,-2,14,4);poly([[-8,-3],[-17,0],[-8,3]],'#ff9c61');ctx.restore()});for(const f of decoys)atDepth(f.z||0,()=>{glow(f.x,f.y,18,'#ffd59477');ellipse(f.x,f.y,2.5,2.5,'#fff1b9')});if(mode!=='playing'||school.active)for(const t of texts){ctx.globalAlpha=clamp(t.life,.01,1);label(t.text,t.x,t.y,t.color,11);}ctx.globalAlpha=1;}
 function drawWeather(){if(['storm','snow'].includes(L.theme)){const snowing=L.theme==='snow';ctx.strokeStyle='#cce0e04a';ctx.lineWidth=1;for(let i=0;i<(coarse?55:100);i++){const seed=i*93.71,x=((seed*13-visualTime*(snowing?26:95)-camera*.4)%(vw+100)+vw+100)%(vw+100)-50,y=(seed*7+visualTime*(snowing?42:500))%(vh+80)-40;if(snowing)ellipse(x,y,i%3*.55+.6,i%3*.55+.6,'#dce7e179');else line(x,y,x-7,y+22,'#b7d3e138',1)}if(L.theme==='storm'&&Math.sin(visualTime*.18)>.9997&&!reduceMotion){ctx.fillStyle='#cbdde521';ctx.fillRect(0,0,vw,vh)}}}
 function atDepth(z,draw){if(!z){draw();return;}const k=1-z*.0017,c=camera+vw*.5;ctx.save();ctx.translate(c,230-z*.28);ctx.scale(k,k);ctx.translate(-c,-230);draw();ctx.restore();}
 function drawDepthFloor(){if(!save.depthMode)return;for(const z of [100,0,-100])atDepth(z,()=>{ctx.setLineDash([9,15]);ctx.strokeStyle=z===0?'#d9d9a947':'#b4d3d323';ctx.lineWidth=1;ctx.beginPath();for(let x=camera-100;x<camera+vw+200;x+=20){const y=ground(x);x===camera-100?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.stroke();ctx.setLineDash([])});}
@@ -735,10 +738,24 @@ function selectMissions(){mode='select';$('menu').hidden=true;showModal('FLIGHT 
 // THE LOST VALLEY: additive challenge mode; campaign physics remains shared.
 // Where the valley blows, and how hard. Ramps toward the beacon so the last stretch is the
 // one that punishes a sloppy line.
+// Placed where the width fits between the obstacles and the pads, checked when the world builds.
+const SHAFT_HALF=300,SHAFT_DEPTH=330;
+const lostShafts=[11750,16250,18550,20850];
+let stars=[];
+// Steep walls with a floor wide enough to turn around in: depth falls off as the fourth power
+// of the distance to the rim, which keeps the bottom flat rather than pinching to a point.
+function shaftDepth(x){
+ let cut=0;
+ for(const sx of lostShafts){
+  const t=Math.abs(x-sx)/SHAFT_HALF;
+  if(t<1)cut=Math.max(cut,SHAFT_DEPTH*(1-t*t*t*t));
+ }
+ return cut;
+}
 const windZones=[[2300,3200,1],[5250,6000,.65],[14300,15650,.55],[16400,18000,.85],[21200,22650,.6],[23500,25100,1]];
 const lostPads=[{x:390,name:'Eagle Base',w:174},{x:1480,name:'Old Ranger Platform',w:132},{x:3160,name:'Mine Relay',w:124},{x:4880,name:'Storm Shelter',w:160},{x:6900,name:'Tallskogen',w:180},{x:9100,name:'Kopparryggen',w:180},{x:11300,name:'Floddalen',w:180},{x:13600,name:'Fjällstationen',w:180},{x:15800,name:'Långa passet',w:180},{x:18100,name:'Norra dalen',w:180},{x:20400,name:'Sista utposten',w:180},{x:22800,name:'Fyrleden',w:180}];
 let lost={active:false,cp:0,hold:0,best:0,crashes:0,total:0,secret:false,returning:false,returnService:new Set(),snapshot:null,lastSave:0,reason:'',recordShown:0};
-function lostTerrain(x,y){if(x<680)return 610;let out=610+Math.sin(x*.002)*65+Math.sin(x*.006)*30;if(x>3300&&x<4450)out=790;for(const p of lostPads){const d=Math.abs(x-p.x);if(d<140)out=610;else if(d<260)out=lerp(610,out,(d-140)/120);}if(x>5700&&x<6100)out=lerp(out,640,(x-5700)/400);if(x>=6100){out=620+Math.sin((x-6100)*.0008)*95+Math.sin((x-6100)*.0024)*35;for(const p of lostPads){const d=Math.abs(x-p.x);if(d<150)out=610;else if(d<300)out=lerp(610,out,(d-150)/150);}}if(x>L.beacon-400)out=640;return out;}
+function lostTerrain(x,y){if(x<680)return 610;let out=610+Math.sin(x*.002)*65+Math.sin(x*.006)*30;if(x>3300&&x<4450)out=790;for(const p of lostPads){const d=Math.abs(x-p.x);if(d<140)out=610;else if(d<260)out=lerp(610,out,(d-140)/120);}if(x>5700&&x<6100)out=lerp(out,640,(x-5700)/400);if(x>=6100){out=620+Math.sin((x-6100)*.0008)*95+Math.sin((x-6100)*.0024)*35;for(const p of lostPads){const d=Math.abs(x-p.x);if(d<150)out=610;else if(d<300)out=lerp(610,out,(d-150)/150);}}if(x>L.beacon-400)out=640;return out+shaftDepth(x);}
 function lostWind(){const u=time%14;let x=0,y=0,label='LUGNT';if(u>=3&&u<6){x=Math.sin((u-3)/3*Math.PI)*31;label='VIND →';}else if(u>=7&&u<10){x=-Math.sin((u-7)/3*Math.PI)*35;label='← VIND';}else if(u>=10&&u<12){y=-Math.sin((u-10)/2*Math.PI)*24;label='UPPVIND ↑';}let strength=.10;
  for(const [from,to,power] of windZones)if(heli.x>from&&heli.x<to){strength=power;break}
  return{x:x*strength,y:y*strength,label:strength>.5?label:'SVAG VIND',strength,phase:u/14};}
@@ -765,7 +782,8 @@ function completeLost(){
  showModal('THE LOST VALLEY · HEMMA','Du klarade det.',
   '<p>Skidorna är på betong. Rotorn varvar ner. Elva rastplatser, '+lost.crashes+
   ' krascher och hela vägen tillbaka.</p>'+stats+
-  '<p>Hemligheter: '+(lost.secret?'1 / 1':'0 / 1')+'</p>'+
+  '<p>Lådor ur schakten: '+stars.filter(s=>s.taken).length+' / '+stars.length+
+  ' · Hemligheter: '+(lost.secret?'1 / 1':'0 / 1')+'</p>'+
   '<p>Ops vill säga en sak innan du kliver ur.</p>',
   [{text:'LYSSNA',primary:true,run:lostEpilogue}]);
 }
@@ -780,11 +798,23 @@ function lostEpilogue(){
   '<p>De följde med för att du såg ut att ha ansträngt dig.</p>'+
   '<p><b>'+mins+':'+secs+'</b> i luften. <b>'+lost.crashes+'</b> krascher. '+
   (lost.secret?'En hemlighet hittad. ':'')+'Noll liv i fara.</p>'+
+  (stars.filter(s=>s.taken).length?'<p>Lådorna du hämtade ur schakten var reservdelar till '+
+   'stationen. De hade beställt dem i mars.</p>':'')+
   '<p>Ann-Sofie undrar förresten om du kan flyga tillbaka.</p>'+
   '<p>De glömde verktygslådan.</p>',
   [{text:'EN GÅNG TILL',primary:true,run:()=>startLost(true)},{text:'HUVUDMENY',run:toMenu}]);
 }
-function updateLost(dt){if(!L.lost||!lost.active)return;lost.total+=dt;lost.lastSave+=dt;const best=Math.min(L.beacon,heli.x);if(best>lost.best){lost.best=best;if(best>lost.recordShown+350){lost.recordShown=best;popup(heli.x,heli.y-105,'NYTT BÄSTA · '+Math.round(best/L.beacon*100)+' %','#bcebd7');}}
+function updateStars(){
+ for(const st of stars){
+  if(st.taken)continue;
+  if(Math.hypot(st.x-heli.x,st.y-heli.y)<48){
+   st.taken=true;AudioState.sfx('rescue');
+   const left=stars.filter(v=>!v.taken).length;
+   radio(left?'Låda säkrad. '+left+' kvar i schakten.':'Alla lådor ombord. Fortsätt mot fyren.',4);
+  }
+ }
+}
+function updateLost(dt){if(!L.lost||!lost.active)return;updateStars();lost.total+=dt;lost.lastSave+=dt;const best=Math.min(L.beacon,heli.x);if(best>lost.best){lost.best=best;if(best>lost.recordShown+350){lost.recordShown=best;popup(heli.x,heli.y-105,'NYTT BÄSTA · '+Math.round(best/L.beacon*100)+' %','#bcebd7');}}
  if(!lost.secret&&Math.hypot(heli.x-3940,heli.y-685)<70){lost.secret=true;popup(heli.x,heli.y-80,'GRUVANS HEMLIGHET');radio('Dålig idé. Utmärkt resultat.',4);}
  if(heli.carrying===people.length&&!lost.returning){lost.returning=true;radio('Alla ombord. Helikoptern räknas också som alla. Ta er hem.',6);}
  const pad=lostPads.findIndex(p=>Math.abs(heli.x-p.x)<p.w*.38);const safe=pad>=0&&heli.landed&&Math.abs(heli.vx)<12&&Math.abs(heli.angle)<.16;
@@ -797,7 +827,18 @@ function updateLost(dt){if(!L.lost||!lost.active)return;lost.total+=dt;lost.last
  if(lost.lastSave>4){saveLost();lost.lastSave=0;}
  $('lostStatus').hidden=false;const progress=Math.round(lost.best/L.beacon*100);$('lostStatus').textContent=(lost.returning?'← HEM TILL EAGLE BASE':'→ RESCUE BEACON')+' · '+lostPads[lost.cp].name+' · BÄSTA '+progress+' % · '+lost.crashes+' KRASCHER';$('tip').textContent=heli.x>3350&&heli.x<4350?(heli.y>510?'GRUVAN · HÅLL CENTRUM · AKTA TAK OCH VÄGGAR':'SÄKRA VÄGEN · FLYG ÖVER BERGET'):lostWind().label+' · LÄR DIG RYTMEN · LANDA VID RELÄPLATTORNA';
 }
-function drawLost(){if(!L.lost)return;for(let i=1;i<lostPads.length;i++){const p=lostPads[i];landingPad(p.x,p.w,i<=lost.cp);label(p.name,p.x,ground(p.x)-83,'#c6ead8',13);if(Math.abs(heli.x-p.x)<340)label(i<=lost.cp?'CHECKPOINT SPARAD':'LANDA LUGNT · SPARA CHECKPOINT',p.x,ground(p.x)+34,'#c6ead8',10);if(Math.abs(heli.x-p.x)<p.w&&lost.hold>0)line(p.x-45,ground(p.x)-62,p.x-45+90*clamp(lost.hold/1.1,0,1),ground(p.x)-62,'#c6efd5',3);}
+function drawLost(){if(!L.lost)return;
+ for(const st of stars){
+  if(st.taken||st.x<camera-200||st.x>camera+vw+200)continue;
+  const bob=Math.sin(visualTime*1.7+st.x)*5,y=st.y+bob;
+  glow(st.x,y,52,'#ffd88a2e');
+  const pts=[];
+  for(let i=0;i<10;i++){const a=i/10*TAU-Math.PI/2,r=i%2?7:17;
+   pts.push([st.x+Math.cos(a)*r,y+Math.sin(a)*r]);}
+  poly(pts,'#f6d99a','#fff0c8');
+  ellipse(st.x,y,4,4,'#fffbef');
+ }
+for(let i=1;i<lostPads.length;i++){const p=lostPads[i];landingPad(p.x,p.w,i<=lost.cp);label(p.name,p.x,ground(p.x)-83,'#c6ead8',13);if(Math.abs(heli.x-p.x)<340)label(i<=lost.cp?'CHECKPOINT SPARAD':'LANDA LUGNT · SPARA CHECKPOINT',p.x,ground(p.x)+34,'#c6ead8',10);if(Math.abs(heli.x-p.x)<p.w&&lost.hold>0)line(p.x-45,ground(p.x)-62,p.x-45+90*clamp(lost.hold/1.1,0,1),ground(p.x)-62,'#c6efd5',3);}
  const areas=[[780,'DEN ÖPPNA DALEN'],[2100,'FLODPASSAGEN'],[2670,'VINDPASSET'],[3300,'DEN GAMLA GRUVAN'],[4740,'BERGSBRON'],[5450,'STORMTOPPEN'],
   [7900,'KOPPARRYGGEN'],[10300,'FLODDALEN'],[12600,'FJÄLLSTATIONEN'],[14800,'LÅNGA PASSET'],
   [17100,'NORRA DALEN'],[19500,'DEN ÖVERGIVNA BASEN'],[21800,'FYRLEDEN'],[24200,'SISTA ANFLYGNINGEN']];for(const [x,name]of areas)if(Math.abs(x-camera-vw/2)<vw)label(name,x,150,'#d1e3d577',18);
@@ -809,7 +850,9 @@ function drawLost(){if(!L.lost)return;for(let i=1;i<lostPads.length;i++){const p
 
 const drillNames={basic:'Grunder · lyft, motstyr och landa',turn:'Mjuk vändning i luften',rescue:'Rädda en människa',cargo:'Fånga och leverera en låda'};
 function selectTraining(){clearInput();mode='select';school.active=false;$('skipSchool').hidden=$('retrySchool').hidden=true;$('mobile').hidden=true;$('menu').hidden=true;showModal('FLYGSKOLA','Träna i din egen takt.','<p>Välj valfri övning. Samma flygfysik som i uppdragen, utan fiendeeld. Du kan starta om varje övning.</p><div class="missionlist" id="trainingList"></div>',[{text:'HUVUDMENY',run:toMenu}]);for(const [kind,name] of Object.entries(drillNames)){const b=document.createElement('button'),done=kind==='basic'?save.schoolComplete:save.trainingResults?.[kind];b.innerHTML='<b>'+name+'</b><span>'+(done?'✓ GENOMFÖRD · TRÄNA IGEN':'STARTA ÖVNING')+'</span>';b.onclick=()=>startDrill(kind);$('trainingList').append(b);}AudioState.sync();}
-function startDrill(kind){if(!drillNames[kind])return;if(kind==='basic'){startTraining();return;}loadLevel(0);L={...levels[0],name:'FLYGSKOLA',region:drillNames[kind],length:2600,wind:0,people:[],guns:[],clear:false,cargo:kind==='cargo'?{x:1040,to:1740}:null};makeWorld();heli=newHeli();people=kind==='rescue'?[{x:1110,y:ground(1110)-8,homeX:1110,status:'waiting',phase:0}]:[];cargo=kind==='cargo'?{x:1040,y:ground(1040)-14,status:'waiting',to:1740}:null;enemies=['gun','rocket'].includes(kind)?[1120,1700].map(x=>({x,y:ground(x)-15,hp:kind==='gun'?28:55,max:kind==='gun'?28:55,type:kind==='gun'?'gun':'missile',cd:999,aim:-Math.PI/2,flash:0,warn:0,training:true,trainingWeapon:kind})):[];school={active:true,kind,stage:0,hold:0,turnedLeft:false,refill:0};$('modalTitle').textContent=drillNames[kind];$('modalTag').textContent='FLYGSKOLA · FRI ÖVNING';$('modalBody').innerHTML='<p>'+drillHint()+'</p><p>'+({turn:'Lyft först. Q / SVEP tar nu ungefär 1,7 sekunder. Vänd åt vänster, håll lugn flygning och vänd sedan tillbaka. Helikoptern behåller sin rörelse under vändningen.',rescue:'Flyg över forskaren. H / STABILISERA hjälper dig hålla höjden. Håll E / VINSCH för att sänka kroken. Släpp när personen fastnat, och landa sedan vid basen.',cargo:'Håll E / VINSCH tills kroken fångar lådan. Släpp för att lyfta lasten. Flyg till leveransplattan, håll vinschen för att sänka och sätt ner lådan långsamt.',gun:'Luta helikoptern för att sikta. Space / ELD skjuter längs pipan. Träffa båda övningsmålen med kanonen. Korta salvor förhindrar överhettning.',rocket:'Luta för att sikta och tryck R / RAKET. Träffa båda bepansrade målen. Kanonen biter inte på dessa mål. Övningsraketer fylls på om de tar slut.'}[kind])+'</p>';if(coarse)$('modalBody').innerHTML='<p>'+drillNames[kind]+'</p><p>Håll en skärmhalva för lutning, båda för lyft. Släpp för att sjunka. Svep vågrätt för att vända nosen åt det hållet.</p><p>VINSCH: tryck för att sänka, tryck igen för att hissa. Stabilisera inför fångst och landa lugnt.</p>';updateHUD();}
+function startDrill(kind){if(!drillNames[kind])return;if(kind==='basic'){startTraining();return;}loadLevel(0);L={...levels[0],name:'FLYGSKOLA',region:drillNames[kind],length:2600,wind:0,people:[],guns:[],clear:false,cargo:kind==='cargo'?{x:1040,to:1740}:null};makeWorld();
+ stars=L.lost?lostShafts.map(x=>({x,y:ground(x)-60,taken:false})):[];
+ heli=newHeli();people=kind==='rescue'?[{x:1110,y:ground(1110)-8,homeX:1110,status:'waiting',phase:0}]:[];cargo=kind==='cargo'?{x:1040,y:ground(1040)-14,status:'waiting',to:1740}:null;enemies=['gun','rocket'].includes(kind)?[1120,1700].map(x=>({x,y:ground(x)-15,hp:kind==='gun'?28:55,max:kind==='gun'?28:55,type:kind==='gun'?'gun':'missile',cd:999,aim:-Math.PI/2,flash:0,warn:0,training:true,trainingWeapon:kind})):[];school={active:true,kind,stage:0,hold:0,turnedLeft:false,refill:0};$('modalTitle').textContent=drillNames[kind];$('modalTag').textContent='FLYGSKOLA · FRI ÖVNING';$('modalBody').innerHTML='<p>'+drillHint()+'</p><p>'+({turn:'Lyft först. Q / SVEP tar nu ungefär 1,7 sekunder. Vänd åt vänster, håll lugn flygning och vänd sedan tillbaka. Helikoptern behåller sin rörelse under vändningen.',rescue:'Flyg över forskaren. H / STABILISERA hjälper dig hålla höjden. Håll E / VINSCH för att sänka kroken. Släpp när personen fastnat, och landa sedan vid basen.',cargo:'Håll E / VINSCH tills kroken fångar lådan. Släpp för att lyfta lasten. Flyg till leveransplattan, håll vinschen för att sänka och sätt ner lådan långsamt.',gun:'Luta helikoptern för att sikta. Space / ELD skjuter längs pipan. Träffa båda övningsmålen med kanonen. Korta salvor förhindrar överhettning.',rocket:'Luta för att sikta och tryck R / RAKET. Träffa båda bepansrade målen. Kanonen biter inte på dessa mål. Övningsraketer fylls på om de tar slut.'}[kind])+'</p>';if(coarse)$('modalBody').innerHTML='<p>'+drillNames[kind]+'</p><p>Håll en skärmhalva för lutning, båda för lyft. Släpp för att sjunka. Svep vågrätt för att vända nosen åt det hållet.</p><p>VINSCH: tryck för att sänka, tryck igen för att hissa. Stabilisera inför fångst och landa lugnt.</p>';updateHUD();}
 function drillHint(){if(coarse||touchFlight)return school.kind==='turn'?'LYFT MED BÅDA · SVEP VÄNSTER · BALANSERA · SVEP HÖGER':school.kind==='rescue'?'VINSCH: TRYCK FÖR ATT SÄNKA · TRYCK IGEN FÖR ATT HISSA · LANDA HEMMA':'FÅNGA LÅDAN · VINSCH VÄXLAR SÄNKNING / HISSNING';if(school.kind==='turn')return school.turnedLeft?'Q / SVEP TILLBAKA ÅT HÖGER · HÅLL LUGN FLYGNING':'LYFT · Q / SVEP ÅT VÄNSTER · HÅLL LUGN FLYGNING';if(school.kind==='rescue')return heli.carrying?'← ÅTERVÄND TILL BASEN OCH LANDA':heli.ropeTarget?'SLÄPP E / VINSCH FÖR ATT HISSA UPP':'→ FORSKARE VID 1110 · HÅLL E / VINSCH FÖR ATT FÅNGA';if(school.kind==='cargo')return cargo?.status==='attached'?'→ LEVERANSPLATTA · HÅLL VINSCH OCH SÄNK LÅDAN VARSAMT':'→ FÅNGA LÅDAN MED E / VINSCH';return (school.kind==='gun'?'SPACE / ELD':'R / RAKET')+' · TRÄFFA BÅDA MÅLEN · '+enemies.filter(e=>e.hp<=0).length+'/2';}
 function updateDrill(dt){let passed=false;if(school.kind==='turn'){const calm=!heli.landed&&heli.turn===0&&Math.abs(heli.angle)<.3&&Math.abs(heli.vx)<50&&Math.abs(heli.vy)<40,dir=school.turnedLeft?1:-1;school.hold=calm&&heli.dir===dir?school.hold+dt:0;if(school.hold>1){if(!school.turnedLeft){school.turnedLeft=true;school.hold=0;radio('Bra! Vänd tillbaka åt höger och balansera flygningen.',4);}else passed=true;}}if(school.kind==='rescue')passed=people.length>0&&people.every(p=>p.status==='delivered');if(school.kind==='cargo')passed=cargo?.status==='delivered';if(['gun','rocket'].includes(school.kind))passed=enemies.length>0&&enemies.every(e=>e.hp<=0);if(school.kind==='rocket'&&heli.rockets===0&&rockets.length===0){school.refill+=dt;if(school.refill>2){heli.rockets=4;school.refill=0;radio('Fyra nya övningsraketer. Sikta med nosen och försök igen.',4);}}if(passed){const kind=school.kind;save.trainingResults=save.trainingResults||{};save.trainingResults[kind]=true;persist();school.active=false;mode='trainingDone';clearInput();$('mobile').hidden=true;$('skipSchool').hidden=$('retrySchool').hidden=true;AudioState.sfx('rescue');showModal('ÖVNING GENOMFÖRD','Snyggt jobbat.', '<p>'+drillNames[kind]+' är genomförd. Övningen sparas separat från kampanjens poäng.</p>',[{text:'NÄSTA ÖVNING',primary:true,run:()=>{const kinds=Object.keys(drillNames),next=kinds[kinds.indexOf(kind)+1];next?startDrill(next):selectTraining()}},{text:'TRÄNA IGEN',run:()=>startDrill(kind)},{text:'ALLA ÖVNINGAR',run:selectTraining}]);}}
 function drawDrillGuide(){let x=heli.x,y=heli.y-100,text=drillHint();if(school.kind==='rescue'){x=heli.carrying?390:1110;y=ground(x)-85;text=heli.carrying?'LANDA HEMMA':'VINSCHA UPP FORSKAREN';}if(school.kind==='cargo'){x=cargo?.status==='attached'?1740:1040;y=ground(x)-85;text=cargo?.status==='attached'?'SÄTT NER LÅDAN':'FÅNGA LÅDAN';}if(['gun','rocket'].includes(school.kind)){for(const e of enemies)if(e.hp>0){ctx.strokeStyle='#edcb8f';ctx.lineWidth=2;ctx.beginPath();ctx.arc(e.x,e.y,40,0,TAU);ctx.stroke();label('ÖVNINGSMÅL · '+(school.kind==='gun'?'KANON':'RAKET'),e.x,e.y-78,'#f5dda6',11);}return;}label(text,x,y,'#cbf1d8',12);}
@@ -855,6 +898,10 @@ function updateHUD(){
  gauge('compactFuel','BRÄNSLE',heli.fuel,heli.fuel<20);
  put('compactAlt','<small>HÖJD</small><b>'+Math.max(0,Math.round(agl*.45))+'<em> m</em></b>');
  flag('compactAlt','alert',!heli.landed&&agl<45);
+ const gathered=stars.filter(s=>s.taken).length;
+ put('compactStars','<small>LÅDOR</small><b>'+gathered+'<em> / '+stars.length+'</em></b>');
+ $('compactStars').hidden=!stars.length;
+ flag('compactStars','done',stars.length>0&&gathered===stars.length);
  put('compactPeople','<small>OMBORD</small><b>'+heli.carrying+'<em> / '+people.length+'</em></b>');
  $('compactPeople').hidden=!people.length;
  put('compactGoal',school.active?'FLYGSKOLA':arrow+' '+target.text+(distance>60?' · '+Math.round(distance*.45)+' m':''),true);

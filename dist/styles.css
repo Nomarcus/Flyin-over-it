@@ -234,3 +234,9 @@
  #hud #tip{top:90px}
  #hud #warning{top:90px}
 }
+
+/* The shaft crates: the count that sends you underground. */
+#compactStars b{color:#f6d99a}
+#compactHud>span.done small{color:#a9d8ae}
+#compactHud>span.done b{color:#b9e1cb}
+@media(max-width:620px){#hud #compactHud>#compactPeople{display:none}}

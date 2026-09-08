@@ -33,6 +33,37 @@ This pass reworked the camera and the HUD.
   and the combat buttons. `drawMap` is gone.
 - Narrow screens drop the aboard counter and move bearing/range to a tab under the rail.
 
+## Shafts and crates
+
+Four shafts are cut into the valley floor between checkpoints, 600 units across at the rim and
+about 250 deep, with a supply crate glowing at the bottom of each. The route stops being a line
+you follow and becomes one you keep having to leave and climb back out of. Depth falls off as
+the fourth power of the distance to the rim, which keeps the floor flat rather than pinching to
+a point, and leaves 190 units either side of the hull at crate depth.
+
+First cut was 480 across. A blind climb-out cost 65% of the hull on the walls, so they were
+widened and thinned to four, at the only positions where a wider shaft still clears every
+obstacle and pad. Flown properly — easing the sink rate rather than dropping — the whole dive
+and climb now costs nothing. A test flies one that way and asserts it.
+
+The count sits in the instrument rail, and both the debrief and the turn account for it. The
+crates are not required to finish: they are tracked and celebrated. Gating the ending on them
+would mean a player could reach the beacon and be told to fly twenty kilometres back.
+
+## No text on the world
+
+The valley is clean while you fly it. Area names, pad names, checkpoint instructions, cave
+arrows, the beacon label, the rotor callout and the score popups are all gone; the flight school
+still teaches with labels, and the radio still talks. Turning the signage on had been my change
+two passes earlier, and it put every sign in the valley on screen at once.
+
+## Smoke
+
+Damage smoke was a hard-edged dark disc that stayed where it was spawned, so a trail of them
+read as rocks — or dents — hanging in the air behind the craft. It now expands, softens and
+thins as it ages. The dents themselves were on the hull the whole time; measuring them against
+the hull model is what ruled them out.
+
 ## Hit boxes match the art
 
 Measured by rendering the craft alone on a transparent canvas and reading back which pixels were
@@ -242,7 +273,7 @@ of flying it. A test asserts every gate admits the craft at full tilt.
 
 ## Testing
 
-- `npm test` — 18 suites covering touch input, checkpoints, rescue and return, portrait fill,
+- `npm test` — 19 suites covering touch input, checkpoints, rescue and return, portrait fill,
   altitude zoom-out framing, zoom saturation, the instrument rail contents and its
   write-on-change behaviour, the valley rail (including pads lighting as checkpoints bank),
   the hull/fuel/height alert states, and the new guides under every draw state.

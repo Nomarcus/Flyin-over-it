@@ -3,7 +3,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert');const {createCa
 const kv={};const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classes:new Set(),get classList(){const c=this.classes;return{toggle:(k,on)=>{on===undefined?(c.has(k)?c.delete(k):c.add(k)):(on?c.add(k):c.delete(k))},add:k=>c.add(k),remove:k=>c.delete(k),contains:k=>c.has(k)}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
 const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:()=>element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,testArt:{day:await loadImage(root+'/alpine-day.webp'),night:await loadImage(root+'/alpine-night.webp'),jungle:await loadImage(root+'/jungle.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
-code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,getStars:()=>stars,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
 
 const emit=(id,type,pointerId,x,y=300)=>{for(const f of element(id).listeners[type]||[])f({pointerId,clientX:x,clientY:y,preventDefault(){}})};
 a.startLost(true);a.begin();
@@ -132,6 +132,42 @@ a.startLost(true);a.begin();
  }
 }
 console.log('PASS: valley geometry is flyable, pads are approachable, no dead stretches');
+
+// The shafts are the reason to leave the route, so they have to be worth entering and possible
+// to leave. Width is measured against the real hull, not against a guess at it.
+a.startLost(true);a.begin();
+{
+ const shafts=a.getStars(),obs=a.getObstacles(),pads=a.getPads();
+ const width=Math.max(...a.HULL.map(p=>p[0]+p[2]))-Math.min(...a.HULL.map(p=>p[0]-p[2]));
+ assert(shafts.length>=3,'The valley has shafts to dive into, got '+shafts.length);
+ for(const st of shafts){
+  const rim=a.ground(st.x-360),floor=a.ground(st.x);
+  assert(floor-rim>180,'Shaft at '+st.x+' is only '+Math.round(floor-rim)+' deep');
+  // At the crate, how much room is there between the walls?
+  let left=st.x,right=st.x;
+  while(a.ground(left)>st.y+20&&st.x-left<400)left-=5;
+  while(a.ground(right)>st.y+20&&right-st.x<400)right+=5;
+  const room=right-left;
+  assert(room>width+80,'Shaft at '+st.x+' is '+Math.round(room)+' wide at the crate, hull is '+Math.round(width));
+  // Nothing may be built across the mouth. The rim is 300 either side; 20 more is margin.
+  for(const o of obs)assert(o.x+o.w<st.x-320||o.x>st.x+320,'Obstacle at '+o.x+' blocks the shaft at '+st.x);
+  for(const p of pads)assert(Math.abs(p.x-st.x)>410,'Pad '+p.name+' sits in the shaft at '+st.x);
+ }
+ // Flying one: ease down, take the crate, climb back out, without touching the walls.
+ const st=shafts[0],c=a.get().heli;
+ c.x=st.x;c.y=a.ground(st.x-400)-120;c.vx=c.vy=c.angle=c.av=0;c.landed=false;c.airborne=true;c.collective=315;c.hp=100;
+ let t=0;
+ while(t<9&&!st.taken){a.keys.KeyS=c.vy<70;a.keys.KeyW=c.vy>95;a.fixedUpdate(1/120);t+=1/120}
+ a.keys.KeyS=false;a.keys.KeyW=false;
+ assert(st.taken,'A controlled descent reaches the crate');
+ assert(c.hp>90,'and costs nothing in hull, got '+Math.round(c.hp));
+ a.keys.KeyW=true;let t2=0;
+ while(t2<9&&c.y>a.ground(st.x-400)-60){a.fixedUpdate(1/120);t2+=1/120}
+ a.keys.KeyW=false;
+ assert(c.y<=a.ground(st.x-400)-60,'and the craft can climb back out');
+ assert(c.hp>90,'without scraping on the way, got '+Math.round(c.hp));
+}
+console.log('PASS: the shafts are divable and you can get back out of them');
 
 // You must always be able to take off again from anywhere you can land. Grounded contact used
 // to zero the vertical velocity every tick, which threw away the climb the rotor had just
