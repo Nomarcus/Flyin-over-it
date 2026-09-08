@@ -97,8 +97,8 @@ function fixedUpdate(dt){visualTime+=dt;updateEffects(dt);if(mode!=='playing'){i
  heli.compression=damp(heli.compression,0,5.5,dt);
  const gravity=315;let targetLift=gravity+inputY*215;if(heli.landed&&inputY<=.05)targetLift=0;
  if(hoverMode)targetLift=clamp(gravity+(heli.y-heli.hoverY)*2.7+heli.vy*3.2,80,520);
- if(!heli.fuel)targetLift=0;heli.collective=damp(heli.collective,targetLift,2.9,dt);
- let ax=Math.sin(heli.angle)*heli.collective/mass+wind-heli.vx*.27;
+ if(!heli.fuel)targetLift=0;heli.collective=damp(heli.collective,targetLift,2.65,dt);
+ let ax=Math.sin(heli.angle)*heli.collective/mass+wind-heli.vx*.23;
  let ay=gravity+(L.lost?lostWind().y:0)-Math.cos(heli.angle)*heli.collective/mass-heli.vy*.50;
  heli.vx=clamp(heli.vx+ax*dt,-310,310);heli.vy=clamp(heli.vy+ay*dt,-205,245);heli.x+=heli.vx*dt;heli.y+=heli.vy*dt;
  if(heli.x<90||heli.x>L.length-70){heli.x=clamp(heli.x,90,L.length-70);heli.vx*=-.2;}// Open sky: altitude is not limited by an invisible ceiling.

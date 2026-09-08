@@ -54,6 +54,32 @@ a.keys.KeyA=true;step(.85);a.keys.KeyA=false;assert(h.vx<70,'Countersteering red
 assert.equal(a.get().baseVh,400,'Landscape keeps the close 400-unit world height');
 console.log('PASS: retained momentum, controlled countersteering, bounded attitude and closer camera');
 
+// Handling budget. Speed is a commitment: hands off, the craft carries a long way, so a fast
+// run has to be planned out of. What it must NOT become is twitchy or unstoppable, so braking
+// authority and attitude response are held to the same figures as before the drag was cut.
+a.loadLevel(0);a.begin();a.clearInput();
+const fly=(vx)=>{const c=a.get().heli;c.x=1800;c.y=180;c.landed=false;c.airborne=true;
+ c.collective=315;c.vx=vx;c.vy=0;c.angle=0;c.av=0;c.cyclic=0;return c};
+const tick=1/120;
+// Pin the altitude each tick so this measures the horizontal law alone. Without it a leftover
+// touch session reads "no fingers" as descend, and the craft lands mid-measurement.
+const level=(c)=>{c.y=180;c.vy=0;c.landed=false;c.airborne=true};
+h=fly(160);let x0=h.x,t=0;
+while(Math.abs(h.vx)>40&&t<12){a.fixedUpdate(tick);level(h);t+=tick}
+const coast=h.x-x0;
+assert(coast>480&&coast<580,'Hands-off coast stays in the planned band, got '+Math.round(coast));
+h=fly(160);x0=h.x;t=0;a.keys.KeyA=true;
+while(h.vx>5&&t<12){a.fixedUpdate(tick);level(h);t+=tick}
+a.keys.KeyA=false;
+const brake=h.x-x0;
+assert(brake<160,'Committed braking still stops it quickly, got '+Math.round(brake));
+assert(coast/brake>3,'Coasting must cost far more ground than braking, ratio '+(coast/brake).toFixed(1));
+h=fly(0);let peak=0;a.keys.KeyD=true;
+for(let i=0;i<220;i++){a.fixedUpdate(tick);level(h);peak=Math.max(peak,Math.abs(h.angle))}
+a.keys.KeyD=false;
+assert(peak<=.62,'Attitude does not overshoot into twitchiness, peak '+peak.toFixed(3));
+console.log('PASS: handling asks for planning without becoming twitchy');
+
 // Portrait fills the screen: the world box grows instead of the picture shrinking into bars.
 sandbox.innerWidth=390;sandbox.innerHeight=844;a.resize();let portrait=a.get();
 const availableH=844-54-12,drawn=portrait.baseVh*(portrait.scale*portrait.zoom);
