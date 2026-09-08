@@ -3,7 +3,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert');const {createCa
 const kv={};const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classes:new Set(),get classList(){const c=this.classes;return{toggle:(k,on)=>{on===undefined?(c.has(k)?c.delete(k):c.add(k)):(on?c.add(k):c.delete(k))},add:k=>c.add(k),remove:k=>c.delete(k),contains:k=>c.has(k)}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
 const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:()=>element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,testArt:{day:await loadImage(root+'/alpine-day.webp'),night:await loadImage(root+'/alpine-night.webp'),jungle:await loadImage(root+'/jungle.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
-code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
 
 const emit=(id,type,pointerId,x,y=300)=>{for(const f of element(id).listeners[type]||[])f({pointerId,clientX:x,clientY:y,preventDefault(){}})};
 a.startLost(true);a.begin();
@@ -41,6 +41,52 @@ for(const person of a.get().people){
 }
 a.updateLost(.1);assert(a.getLost().returning);h.x=390;h.angle=h.av=h.vx=h.vy=0;h.y=a.gearSupport();h.landed=true;a.set({hoverMode:false});a.updateBase(2);assert.equal(a.get().mode,'lostDone','Full return completes long valley');
 console.log('PASS: all 11 checkpoints, late checkpoint reload, both far beacon rescues and return completion');
+
+// Valley geometry. The flight tests reach checkpoints by teleporting, so nothing else here
+// would notice a passage walled off or an obstacle parked on a landing pad. Measured against
+// the game's own ground() rather than the numbers the level was authored with.
+a.startLost(true);a.begin();
+{
+ const obs=a.getObstacles(),pads=a.getPads(),beacon=a.get().L.beacon;
+ const CRAFT=80;                      // the craft's collision points span about 77 units tall
+ assert(obs.length>30,'The valley is built out end to end, got '+obs.length+' obstacles');
+
+ // Every stretch between checkpoints has something in it: no dead kilometres. The opening
+ // run to Old Ranger Platform is exempt on purpose — the design plan wants the first area to
+ // feel easy, with the landing itself as the challenge.
+ for(let i=1;i<pads.length-1;i++){
+  const from=pads[i].x,to=pads[i+1].x;
+  if(to-from<900)continue;
+  const inSection=obs.filter(o=>o.x>from&&o.x<to).length;
+  assert(inSection>0,'Nothing to fly between '+pads[i].name+' and '+pads[i+1].name);
+ }
+
+ // Hanging obstacles must leave their stated clearance against the highest ground they cross.
+ for(const o of obs.filter(o=>o.gap!==undefined)){
+  let min=Infinity;
+  for(let x=o.x;x<=o.x+o.w;x+=10)min=Math.min(min,a.ground(x)-(o.y+o.h));
+  assert(min>=CRAFT+40,'Under-passage at x='+o.x+' leaves only '+min.toFixed(0));
+  assert(min<=o.gap+2,'Under-passage at x='+o.x+' is looser than authored: '+min.toFixed(0)+' vs '+o.gap);
+ }
+
+ // A pillar standing inside a roof would wall the low route off completely.
+ for(const r of obs.filter(o=>o.type==='roof'))
+  for(const p of obs.filter(o=>o.type==='pillar'&&o.x+o.w>r.x&&o.x<r.x+r.w)){
+   const slot=p.y-(r.y+r.h);
+   assert(slot>=CRAFT+40,'Roof at '+r.x+' and pillar at '+p.x+' leave a '+slot.toFixed(0)+' slot');
+  }
+
+ // Landing has to be possible: keep the approach to every pad clear.
+ for(const p of pads){
+  const half=p.w/2;
+  for(const o of obs){
+   const d=Math.max(0,Math.max(p.x-half-(o.x+o.w),o.x-(p.x+half)));
+   assert(d>=120,'Obstacle at x='+o.x+' crowds '+p.name+', only '+d.toFixed(0)+' away');
+  }
+  assert(p.x<beacon,'Pad '+p.name+' sits beyond the beacon');
+ }
+}
+console.log('PASS: valley geometry is flyable, pads are approachable, no dead stretches');
 // Open sky: continuous climb passes the old ceiling and camera follows at altitude.
 a.loadLevel(0);a.begin();a.clearInput();h=a.get().heli;a.keys.KeyW=true;step(14);a.keys.KeyW=false;
 assert(h.y < -1500,'Can climb far above the old ceiling');assert(h.vy < -100,'No invisible ceiling stops ascent');

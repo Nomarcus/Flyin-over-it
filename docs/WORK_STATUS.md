@@ -33,6 +33,32 @@ This pass reworked the camera and the HUD.
   and the combat buttons. `drawMap` is gone.
 - Narrow screens drop the aboard counter and move bearing/range to a tab under the rail.
 
+## The valley is built end to end
+
+Obstacles used to stop at x=5,800 of 25,200: three quarters of the route was empty terrain
+between checkpoints. Every stretch now has its own problem, following the design plan's
+principle that the pad at the end of a section should be earned:
+
+- Kopparryggen: a picket of pillars, wide gaps, the gentle re-introduction.
+- Floddalen: low arches. Under is quick, over costs height and time.
+- Fjällstationen: a slot, something above and something below, hold the line.
+- Långa passet: the signature corridor, a long ceiling with teeth under it.
+- Norra dalen: open sky, tall pillars, and the wind decides when you may pass.
+- Den övergivna basen: hangars and a mast, square and unforgiving gaps.
+- Fyrleden: everything at once, but still fair.
+- Sista anflygningen: the narrowest gate on the route, with the most to lose.
+
+Roofs can always be flown over instead of under, so each is a route choice rather than a wall:
+under is fast and tight, over costs height. Hanging obstacles are placed by the clearance they
+leave, measured against the highest ground they cross, so the stated gap is the worst case.
+
+Wind moved from a sine curve to six named zones that ramp toward the beacon, so the pattern can
+be learned. Wind streaks and the readout only appear where the wind is worth reading.
+
+In-world signage was suppressed for the whole of play by a condition in `label()`, so the route
+markings, pad names, cave arrows and the beacon label had never been visible while flying. Only
+the rule that a label never covers the craft remains.
+
 ## Screen budget
 
 - The winch button used to sit in a reserved 78px rail. On a landscape phone that was a fifth
@@ -59,10 +85,16 @@ This pass reworked the camera and the HUD.
 
 ## Testing
 
-- `npm test` — 11 suites covering touch input, checkpoints, rescue and return, portrait fill,
+- `npm test` — 13 suites covering touch input, checkpoints, rescue and return, portrait fill,
   altitude zoom-out framing, zoom saturation, the instrument rail contents and its
   write-on-change behaviour, the valley rail (including pads lighting as checkpoints bank),
   the hull/fuel/height alert states, and the new guides under every draw state.
+- Valley geometry is checked against the game's own ground(): every hanging obstacle leaves its
+  stated clearance, no pillar stands inside a roof, no obstacle crowds a landing pad, and no
+  stretch between checkpoints is empty. Written after that check found two roofs a pillar ran
+  straight through and an arch parked 50 units from a pad — faults the flight tests could not
+  see, because they reach checkpoints by teleporting.
+- Handling is held to a budget: coast distance, braking distance and peak attitude.
 - The test DOM stub now has a real classList, so every class the game toggles is observable
   rather than silently discarded.
 - Render cost measured against the previous version with interleaved A/B runs on a software
