@@ -131,7 +131,29 @@ function repairDents(amount){
 }
 function hitHeli(amount){if(heli.hitCd>0||mode!=='playing')return;heli.hp=clamp(heli.hp-amount,0,100);heli.hitCd=.18;damageFlash=.18;shake=Math.max(shake,5);for(let i=0;i<7;i++)addParticle(heli.x,heli.y,rand(-100,100),rand(-90,90),'#ffd09a',3,.5);AudioState.sfx('hit');if(heli.hp<=0)failMission();}
 function damageEnemy(e,dmg){if(e.hp<=0)return;e.hp-=dmg;e.flash=.12;if(e.hp<=0){e.hp=0;missionKills++;combo=comboTimer>0?combo+1:1;comboTimer=8;const gain=250+Math.min(3,combo-1)*50;score+=gain;popup(e.x,e.y-35,'+'+gain);explode(e.x,e.y,1.15);debris.push({x:e.x,y:e.y,s:1,type:'tank'});if(enemies.every(v=>v.hp<=0)&&L.clear)radio('Korridoren är säkrad. Hämta besättningen och kom hem.');}else{for(let i=0;i<4;i++)addParticle(e.x+rand(-14,14),e.y-10,rand(-60,60),rand(-100,-20),'#efba7c',2,.4)}}
-function fixedUpdate(dt){visualTime+=dt;updateEffects(dt);if(mode!=='playing'){if(mode==='menu'){heli.rotor+=dt*35;heli.y=290+Math.sin(visualTime*.7)*7;heli.x=vw*.72;heli.angle=Math.sin(visualTime*.5)*.025;}return;}time+=dt;radioTimer=Math.max(0,radioTimer-dt);warningTimer-=dt;comboTimer-=dt;gunCd-=dt;rocketCd-=dt;flareCd-=dt;muzzle=Math.max(0,muzzle-dt);heli.hitCd=Math.max(0,heli.hitCd-dt);heli.turn=Math.max(0,heli.turn-dt);if(heli.turn>0){const u=clamp(1-heli.turn/1.65,0,1),ease=u*u*u*(u*(u*6-15)+10);heli.yaw=lerp(heli.yawStart,heli.yawTarget,ease);}else heli.yaw=heli.yawTarget;wind=damp(wind,L.lost?lostWind().x:L.wind*(.5+Math.sin(time*.61)*.32+Math.sin(time*1.71)*.18),1.1,dt);
+function updateCamera(dt){
+ // Pull back as the craft climbs: enough world height for the floor to stay just inside the
+ // bottom edge while the rotor keeps its clearance below the instrument rail. A little extra
+ // at speed so fast passes see the next obstacle in time.
+ const agl=Math.max(0,ground(heli.x)-heli.y-30.8),climbLead=Math.max(0,-heli.vy)*.9;
+ const fit=(agl+climbLead+160)/(baseVh*.92)+clamp(Math.abs(heli.vx)/900,0,.18),want=clamp(fit,1,2);
+ // Pull back fast enough to stay ahead of a hard climb, settle back in slowly so level
+ // flight never breathes. Beyond the limit the floor is allowed to leave the frame.
+ zoom=damp(zoom,want,want>zoom?3.4:1,dt);applyView();
+ // Horizontal lead scales with the viewport so wide screens actually see further ahead.
+ const look=clamp(heli.vx,-vw*.22,vw*.22);const targetCam=clamp(heli.x-vw*.43+look,0,Math.max(0,L.length-vw));camera=damp(camera,targetCam,1.85,dt);
+ // Sit the craft just below centre for more sky, and lead the climb so altitude reads as motion.
+ const rise=clamp(heli.vy*.55,-vh*.18,vh*.18);
+ // Hold the valley floor near the bottom edge until the craft is genuinely far above it.
+ // Keep the room below the craft roughly constant on screen, so a tall portrait box shows
+ // more sky rather than more underground rock.
+ const anchor=vh-Math.min(vh*.45,230*zoom);
+ const targetY=Math.max(heli.y-anchor+rise,ground(heli.x)-vh*.92);
+ camera=clamp(camera,heli.x-vw+130,heli.x-130);cameraY=damp(cameraY,targetY,2.5,dt);cameraY=clamp(cameraY,heli.y-vh+100,heli.y-120);
+}
+function fixedUpdate(dt){visualTime+=dt;updateEffects(dt);
+ if(mode==='wreck'&&wreck){updateWreck(dt);return;}
+ if(mode!=='playing'){if(mode==='menu'){heli.rotor+=dt*35;heli.y=290+Math.sin(visualTime*.7)*7;heli.x=vw*.72;heli.angle=Math.sin(visualTime*.5)*.025;}return;}time+=dt;radioTimer=Math.max(0,radioTimer-dt);warningTimer-=dt;comboTimer-=dt;gunCd-=dt;rocketCd-=dt;flareCd-=dt;muzzle=Math.max(0,muzzle-dt);heli.hitCd=Math.max(0,heli.hitCd-dt);heli.turn=Math.max(0,heli.turn-dt);if(heli.turn>0){const u=clamp(1-heli.turn/1.65,0,1),ease=u*u*u*(u*(u*6-15)+10);heli.yaw=lerp(heli.yawStart,heli.yawTarget,ease);}else heli.yaw=heli.yawTarget;wind=damp(wind,L.lost?lostWind().x:L.wind*(.5+Math.sin(time*.61)*.32+Math.sin(time*1.71)*.18),1.1,dt);
  const hands=touchAxes(),handsOn=coarse||touchFlight;let inputX=clamp((keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+hands.x+gyroInput(dt),-1,1),inputY=clamp((keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+(keys.KeyW||keys.ArrowUp||keys.KeyS||keys.ArrowDown?0:handsOn?(hoverMode&&!hands.left&&!hands.right?0:hands.y):0),-1,1);
  inputX=clamp(inputX*save.sensitivity,-1,1);inputY=clamp(inputY*save.sensitivity,-1,1);
  heli.z=heli.vz=0;
@@ -177,24 +199,7 @@ function fixedUpdate(dt){visualTime+=dt;updateEffects(dt);if(mode!=='playing'){i
  }
  updateWinch(dt);updateBase(dt);if(mode!=='playing')return;
  updateProjectiles(dt);if(mode!=='playing')return;
- // Pull back as the craft climbs: enough world height for the floor to stay just inside the
- // bottom edge while the rotor keeps its clearance below the instrument rail. A little extra
- // at speed so fast passes see the next obstacle in time.
- const agl=Math.max(0,ground(heli.x)-heli.y-30.8),climbLead=Math.max(0,-heli.vy)*.9;
- const fit=(agl+climbLead+160)/(baseVh*.92)+clamp(Math.abs(heli.vx)/900,0,.18),want=clamp(fit,1,2);
- // Pull back fast enough to stay ahead of a hard climb, settle back in slowly so level
- // flight never breathes. Beyond the limit the floor is allowed to leave the frame.
- zoom=damp(zoom,want,want>zoom?3.4:1,dt);applyView();
- // Horizontal lead scales with the viewport so wide screens actually see further ahead.
- const look=clamp(heli.vx,-vw*.22,vw*.22);const targetCam=clamp(heli.x-vw*.43+look,0,Math.max(0,L.length-vw));camera=damp(camera,targetCam,1.85,dt);
- // Sit the craft just below centre for more sky, and lead the climb so altitude reads as motion.
- const rise=clamp(heli.vy*.55,-vh*.18,vh*.18);
- // Hold the valley floor near the bottom edge until the craft is genuinely far above it.
- // Keep the room below the craft roughly constant on screen, so a tall portrait box shows
- // more sky rather than more underground rock.
- const anchor=vh-Math.min(vh*.45,230*zoom);
- const targetY=Math.max(heli.y-anchor+rise,ground(heli.x)-vh*.92);
- camera=clamp(camera,heli.x-vw+130,heli.x-130);cameraY=damp(cameraY,targetY,2.5,dt);cameraY=clamp(cameraY,heli.y-vh+100,heli.y-120);
+ updateCamera(dt);
  if(heli.fuel===0&&heli.landed&&heli.x>620)failMission('Bränslet är slut. Återvänd till basen för påfyllning under längre uppdrag.');
  updateTraining(dt);updatePrecision(dt);updateTutorial();updateLost(dt);AudioState.update(dt);hudTimer-=dt;if(hudTimer<=0){updateHUD();hudTimer=.08;}for(const k in edges)delete edges[k];}
 function winchMount(){const yaw=heli.turn>0?heli.yaw:(heli.dir===1?0:Math.PI),p=projectHeliPoint(-6,21,17,yaw,heli.bank);return rotateLocal(p.x,p.y);}
@@ -242,7 +247,18 @@ function updateProjectiles(dt){for(const b of bullets){if(b.life<=0)continue;if(
  for(const m of missiles){if(m.life<=0)continue;m.life-=dt;m.z=m.z||0;m.vz=m.vz||0;if(!m.decoy){const f=decoys.find(f=>f.life>0&&Math.hypot(f.x-m.x,f.y-m.y,(f.z||0)-m.z)<420);if(f)m.decoy=f}const target=m.decoy||heli;let dx=target.x-m.x,dy=target.y-m.y,dz=(target.z||0)-m.z,len=Math.hypot(dx,dy,dz)||1;m.vz=damp(m.vz,dz/len*225,1.8,dt);m.z+=m.vz*dt;m.vx=damp(m.vx,dx/len*225,1.8,dt);m.vy=damp(m.vy,dy/len*225,1.8,dt);m.px=m.x;m.py=m.y;m.x+=m.vx*dt;m.y+=m.vy*dt;m.trail-=dt;if(m.trail<0){smoke(m.x,m.y,3,.45,'#b6beb8',m.z);m.trail=.05;}if(m.decoy&&len<22){m.life=0;explode(m.x,m.y,.45,m.z);score+=40;}else if(!m.decoy&&Math.abs(m.z-heli.z)<20&&segmentDist(m.px,m.py,m.x,m.y,heli.x,heli.y)<26){m.life=0;hitHeli(22);explode(m.x,m.y,.65,m.z)}if(blocked(m.px,m.py,m.x,m.y)||m.y>ground(m.x)){m.life=0;explode(m.x,m.y,.55,m.z)}}
  bullets=bullets.filter(b=>b.life>0&&b.y>-100);rockets=rockets.filter(r=>r.life>0&&r.y>-150);missiles=missiles.filter(m=>m.life>0);}
 function killBoss(){explode(boss.x,boss.y,2.1);score+=2200;popup(boss.x,boss.y-55,'HEAVY GUNSHIP +2 200');radio('Gunship utslagen! Hämta de sista och kom hem.',6);for(let i=0;i<6;i++)debris.push({x:boss.x+rand(-50,50),y:boss.y,vx:rand(-100,100),vy:rand(-80,0),s:rand(.3,.7),type:'falling'});}
-function updateEffects(dt){shake*=Math.exp(-6*dt);damageFlash=Math.max(0,damageFlash-dt);for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=(p.kind==='dust'?8:180)*dt;p.vx*=Math.exp(-.5*dt);p.life-=dt;p.angle+=dt*2;}particles=particles.filter(p=>p.life>0);for(const s of smokes){s.x+=(s.vx+wind*.4)*dt;s.y-=dt*18;s.size+=dt*16;s.life-=dt;}smokes=smokes.filter(s=>s.life>0);for(const b of bursts){b.r+=dt*100*b.power;b.life-=dt;}bursts=bursts.filter(b=>b.life>0);for(const f of decoys){f.x+=f.vx*dt;f.y+=f.vy*dt;f.vy+=55*dt;f.life-=dt;if(Math.random()<dt*25)addParticle(f.x,f.y,rand(-10,10),rand(-20,10),'#fff0b4',2,.35,'spark',f.z||0)}decoys=decoys.filter(f=>f.life>0);for(const t of texts){t.y-=dt*25;t.life-=dt}texts=texts.filter(t=>t.life>0);for(const d of debris){if(d.type==='falling'){d.x+=d.vx*dt;d.y+=d.vy*dt;d.vy+=250*dt;if(d.y>ground(d.x)){d.y=ground(d.x);d.type='wreck';smoke(d.x,d.y,15,1.4);}}}}
+function updateEffects(dt){shake*=Math.exp(-6*dt);damageFlash=Math.max(0,damageFlash-dt);for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=(p.kind==='dust'?8:180)*dt;p.vx*=Math.exp(-.5*dt);p.life-=dt;p.angle+=dt*2;}particles=particles.filter(p=>p.life>0);for(const s of smokes){s.x+=(s.vx+wind*.4)*dt;s.y-=dt*18;s.size+=dt*16;s.life-=dt;}smokes=smokes.filter(s=>s.life>0);for(const b of bursts){b.r+=dt*100*b.power;b.life-=dt;}bursts=bursts.filter(b=>b.life>0);for(const f of decoys){f.x+=f.vx*dt;f.y+=f.vy*dt;f.vy+=55*dt;f.life-=dt;if(Math.random()<dt*25)addParticle(f.x,f.y,rand(-10,10),rand(-20,10),'#fff0b4',2,.35,'spark',f.z||0)}decoys=decoys.filter(f=>f.life>0);for(const t of texts){t.y-=dt*25;t.life-=dt}texts=texts.filter(t=>t.life>0);for(const d of debris){
+  if(d.type==='falling'){d.x+=d.vx*dt;d.y+=d.vy*dt;d.vy+=250*dt;if(d.y>ground(d.x)){d.y=ground(d.x);d.type='wreck';smoke(d.x,d.y,15,1.4);}}
+  else if(d.type==='rotor'||d.type==='panel'){
+   d.x+=d.vx*dt;d.y+=d.vy*dt;d.vy+=250*dt;d.vx-=d.vx*.35*dt;d.rot+=d.spin*dt;
+   const g=ground(d.x);
+   if(d.y>g){d.y=g;
+    if(Math.abs(d.vy)>40){d.vy=-d.vy*.3;d.vx*=.6;d.spin*=.5;
+     addParticle(d.x,g,rand(-60,60),rand(-50,-10),'#d8c79a',2,.35,'dust');}
+    else{d.vy=0;d.vx*=Math.exp(-7*dt);d.spin*=Math.exp(-6*dt);d.type='rotorRest'===d.type?d.type:d.type;}
+   }
+  }
+ }}
 // Canvas world renderer: shared geometry is used for the helicopter, muzzle and flight reticle.
 function poly(points,fill,stroke){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}}
 function line(x1,y1,x2,y2,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
@@ -455,7 +471,19 @@ function drawDents(dir){
 function heliBody(x,y,a,dir,t=0,isBoss=false){
  ctx.save();ctx.translate(x,y);ctx.rotate(a);if(isBoss)ctx.scale(1.55,1.4);
  const yaw=isBoss?(dir===1?0:Math.PI):heli.turn>0?heli.yaw:(dir===1?0:Math.PI),faces=[];
- let drawingGear=false;const point=v=>(drawingGear?gearPoint:projectHeliPoint)(v[0],v[1],v[2],yaw,isBoss?Math.sin(boss.t*.7)*.1:heli.bank);
+ let drawingGear=false;
+ const crush=p=>{
+  if(isBoss||!heli.dents||!heli.dents.length)return p;
+  let ox=0,oy=0;
+  for(const k of heli.dents){
+   const kx=k.x*dir,ky=k.y,d=Math.hypot(p.x-kx,p.y-ky),R=11+k.s*16;
+   if(d>R||d<.01)continue;
+   const pull=k.s*4.6*(1-d/R);
+   ox+=(kx-p.x)/d*pull;oy+=(ky-p.y)/d*pull;
+  }
+  p.x+=ox;p.y+=oy;return p;
+ };
+ const point=v=>crush((drawingGear?gearPoint:projectHeliPoint)(v[0],v[1],v[2],yaw,isBoss?Math.sin(boss.t*.7)*.1:heli.bank));
  function face(v,color,shine=0){const pp=v.map(point);faces.push({pp,z:pp.reduce((sum,p)=>sum+p.depth,0)/pp.length,color,shine});}
  function box(x1,y1,z1,x2,y2,z2,color,top,side){
   face([[x1,y1,z1],[x2,y1,z1],[x2,y2,z1],[x1,y2,z1]],side||color);
@@ -595,7 +623,20 @@ function drawWeather(){if(['storm','snow'].includes(L.theme)){const snowing=L.th
 function atDepth(z,draw){if(!z){draw();return;}const k=1-z*.0017,c=camera+vw*.5;ctx.save();ctx.translate(c,230-z*.28);ctx.scale(k,k);ctx.translate(-c,-230);draw();ctx.restore();}
 function drawDepthFloor(){if(!save.depthMode)return;for(const z of [100,0,-100])atDepth(z,()=>{ctx.setLineDash([9,15]);ctx.strokeStyle=z===0?'#d9d9a947':'#b4d3d323';ctx.lineWidth=1;ctx.beginPath();for(let x=camera-100;x<camera+vw+200;x+=20){const y=ground(x);x===camera-100?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.stroke();ctx.setLineDash([])});}
 function drawPlayer(){atDepth(heli.z,()=>{for(const p of people)if(p.status==='attached')drawPerson(p);if(cargo?.status==='attached')drawCargo();drawHeli();});}
-function render(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#06151f';ctx.fillRect(0,0,innerWidth,innerHeight);ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.save();ctx.beginPath();ctx.rect(0,0,vw,vh);ctx.clip();if(!reduceMotion){ctx.translate(Math.sin(visualTime*53)*shake*.25,Math.cos(visualTime*47)*shake*.20)}drawBackdrop();ctx.save();ctx.translate(-camera,-cameraY);drawTerrain();drawGroundDetail();if(heli.z>14)drawPlayer();for(const s of scenery){if(s.x<camera-100||s.x>camera+vw+100)continue;s.type==='tree'?drawTree(s):drawRock(s)}drawBase();drawOutpost();drawObstacles();drawLost();drawHazardGuides();drawFlightGuides();for(const e of enemies)if(e.x>camera-100&&e.x<camera+vw+100)drawEnemy(e);for(const d of debris){if(d.type==='falling'||d.type==='wreck'){poly([[d.x-13*d.s,d.y],[d.x-20*d.s,d.y-15*d.s],[d.x+16*d.s,d.y-20*d.s],[d.x+23*d.s,d.y]],'#3b4c55')}}for(const p of people)if(p.status!=='attached')drawPerson(p);if(cargo?.status!=='attached')drawCargo();if(boss&&boss.hp>0&&boss.x>camera-170&&boss.x<camera+vw+170){ellipse(boss.x,ground(boss.x),70,11,'#071b284d');heliBody(boss.x,boss.y,Math.sin(boss.t*.8)*.07,heli.x<boss.x?-1:1,0,true);}if(heli.z<=14)drawPlayer();drawWinchGuides();drawEffects();ctx.restore();drawWeather();ctx.fillStyle=screenGrad('vignette',()=>{const g=ctx.createRadialGradient(vw*.5,vh*.45,Math.min(vw,vh)*.3,vw*.5,vh*.5,Math.max(vw,vh)*.7);g.addColorStop(0,'#00000000');g.addColorStop(1,'#05152066');return g});ctx.fillRect(0,0,vw,vh);if(damageFlash>0&&!reduceMotion){ctx.fillStyle=`rgba(206,91,57,${damageFlash})`;ctx.fillRect(0,0,vw,vh)}drawFlightInstruments();ctx.restore();}
+function render(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#06151f';ctx.fillRect(0,0,innerWidth,innerHeight);ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.save();ctx.beginPath();ctx.rect(0,0,vw,vh);ctx.clip();if(!reduceMotion){ctx.translate(Math.sin(visualTime*53)*shake*.25,Math.cos(visualTime*47)*shake*.20)}drawBackdrop();ctx.save();ctx.translate(-camera,-cameraY);drawTerrain();drawGroundDetail();if(heli.z>14)drawPlayer();for(const s of scenery){if(s.x<camera-100||s.x>camera+vw+100)continue;s.type==='tree'?drawTree(s):drawRock(s)}drawBase();drawOutpost();drawObstacles();drawLost();drawHazardGuides();drawFlightGuides();for(const e of enemies)if(e.x>camera-100&&e.x<camera+vw+100)drawEnemy(e);for(const d of debris){
+   if(d.type==='falling'||d.type==='wreck'){poly([[d.x-13*d.s,d.y],[d.x-20*d.s,d.y-15*d.s],[d.x+16*d.s,d.y-20*d.s],[d.x+23*d.s,d.y]],'#3b4c55')}
+   else if(d.type==='rotor'){
+    ctx.save();ctx.translate(d.x,d.y);ctx.rotate(d.rot);
+    for(let b=0;b<3;b++){ctx.save();ctx.rotate(b*TAU/3);
+     poly([[0,-2.5],[86,-1.6],[86,1.6],[0,2.5]],'#5d6b6d');ctx.restore();}
+    ellipse(0,0,6,4,'#c9d4b8');ctx.restore();
+   }
+   else if(d.type==='panel'){
+    ctx.save();ctx.translate(d.x,d.y);ctx.rotate(d.rot);const w=13*d.s,h=8*d.s;
+    poly([[-w,-h],[w,-h*.7],[w*.8,h],[-w*.9,h*.8]],'#8d9a95');
+    line(-w,-h,w,-h*.7,'#c3ccc6',1);ctx.restore();
+   }
+  }for(const p of people)if(p.status!=='attached')drawPerson(p);if(cargo?.status!=='attached')drawCargo();if(boss&&boss.hp>0&&boss.x>camera-170&&boss.x<camera+vw+170){ellipse(boss.x,ground(boss.x),70,11,'#071b284d');heliBody(boss.x,boss.y,Math.sin(boss.t*.8)*.07,heli.x<boss.x?-1:1,0,true);}if(heli.z<=14)drawPlayer();drawWinchGuides();drawEffects();ctx.restore();drawWeather();ctx.fillStyle=screenGrad('vignette',()=>{const g=ctx.createRadialGradient(vw*.5,vh*.45,Math.min(vw,vh)*.3,vw*.5,vh*.5,Math.max(vw,vh)*.7);g.addColorStop(0,'#00000000');g.addColorStop(1,'#05152066');return g});ctx.fillRect(0,0,vw,vh);if(damageFlash>0&&!reduceMotion){ctx.fillStyle=`rgba(206,91,57,${damageFlash})`;ctx.fillRect(0,0,vw,vh)}drawFlightInstruments();ctx.restore();}
 const AudioState={ac:null,master:null,rotor:null,rotorGain:null,music:null,nextNote:0,note:0,noise:null,
  init(){if(this.ac){this.ac.resume().catch(()=>{});return;}const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)return;try{this.ac=new Constructor();const a=this.ac;this.master=a.createGain();this.master.gain.value=0;this.master.connect(a.destination);this.music=a.createGain();this.music.gain.value=.65;this.music.connect(this.master);this.rotorGain=a.createGain();this.rotorGain.gain.value=.045;this.rotor=a.createOscillator();this.rotor.type='sawtooth';this.rotor.frequency.value=44;const low=a.createBiquadFilter();low.type='lowpass';low.frequency.value=175;this.rotor.connect(low);low.connect(this.rotorGain);this.rotorGain.connect(this.master);this.rotor.start();const lfo=a.createOscillator(),depth=a.createGain();lfo.frequency.value=17;depth.gain.value=.02;lfo.connect(depth);depth.connect(this.rotorGain.gain);lfo.start();this.noise=a.createBuffer(1,a.sampleRate*.7,a.sampleRate);const data=this.noise.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;this.nextNote=a.currentTime+.25;a.resume().catch(()=>{});this.sync();}catch{this.ac=null;}}
  ,sync(){if(!this.ac)return;const running=mode==='playing';this.master.gain.setTargetAtTime(save.muted||!running?0:.42,this.ac.currentTime,.16);if(running)this.nextNote=Math.max(this.ac.currentTime+.08,this.nextNote);}
@@ -611,7 +652,61 @@ function briefing(){const extra=level===0?'<p><b>A / D:</b> luta för att flyga.
 function toMenu(){if(L.lost)saveLost();document.body?.classList.remove('lostMode');$('lostStatus').hidden=true;dismiss();loadLevel(0,false);$('menu').hidden=false;$('hud').hidden=true;$('pauseBtn').hidden=true;$('mobile').hidden=true;AudioState.sync();}
 function pause(){if(mode==='paused'){dismiss();mode='playing';$('mobile').hidden=!coarse;AudioState.sync();return;}if(mode!=='playing')return;mode='paused';showModal('FLYGNING PAUSAD','Ta ett andetag.',`<p>Skrov: ${Math.ceil(heli.hp)} % · Bränsle: ${Math.ceil(heli.fuel)} % · Ombord: ${heli.carrying}/${people.length}</p><p>${L.lost?'Checkpoint: '+lostPads[lost.cp].name+' · Bästa: '+Math.round(lost.best/L.beacon*100)+' % · Krascher: '+lost.crashes:L.objective}</p><p><b>Motluta för att bromsa.</b> Helikoptern behåller farten när du släpper styrningen. Lite extra lyftkraft hjälper när du lutar kraftigt.</p><p>${coarse?'Håll vänster/höger för lutning. Båda lyfter, släpp för att sjunka. Svep för att vända. Tryck VINSCH för att sänka eller hissa.':'WASD / pilar: flyg · Q: vänd<br>E: vinsch · H: stabilisera'}</p><p>Landning vid basen reparerar och fyller på.</p>`,[{text:'FORTSÄTT FLYGA',primary:true,run:pause},{text:'INSTÄLLNINGAR',run:settings},{text:save.muted?'LJUD PÅ':'LJUD AV',run:()=>{save.muted=!save.muted;persist();AudioState.sync();mode='playing';pause();}},{text:school.active?'VÄLJ ÖVNING':'STABILISERING '+(hoverMode?'AV':'PÅ'),run:()=>{if(school.active)selectTraining();else{hoverMode=!hoverMode;heli.hoverY=heli.y;pause();}}},{text:'BÖRJA OM UPPDRAG',run:()=>L.lost?retryLost():school.active?startDrill(school.kind):loadLevel(level)},{text:'HUVUDMENY',run:toMenu}]);}
 function finishMission(){if(mode!=='playing')return;mode='debrief';const timeBonus=Math.max(0,Math.round((L.par-time)*7)),conditionBonus=Math.round(heli.hp*6),total=score+timeBonus+conditionBonus;score=total;const stars=1+(time<=L.par?1:0)+(crashHits===0&&heli.hp>=65?1:0);const previous=save.results[level]||{};save.results[level]={score:Math.max(total,previous.score||0),stars:Math.max(stars,previous.stars||0),time:Math.min(time,previous.time||Infinity)};save.unlocked=Math.max(save.unlocked,Math.min(level+1,levels.length-1));save.best=Math.max(save.best,total);persist();updateHUD();const final=level===levels.length-1;const starline='★'.repeat(stars)+'☆'.repeat(3-stars);showModal(final?'KAMPANJ SLUTFÖRD':'BESÄTTNINGEN ÄR HEMMA',final?'Ingen lämnades kvar.':'Snyggt flugit.',`<div class="medals">${starline}</div><div class="results"><div><b>${fmt(total)}</b><span>POÄNG</span></div><div><b>${Math.floor(time/60)}:${String(Math.floor(time%60)).padStart(2,'0')}</b><span>FLYGTID</span></div><div><b>${heli.delivered}</b><span>RÄDDADE</span></div></div><p>Tidsbonus +${fmt(timeBonus)} · Skrovbonus +${fmt(conditionBonus)}<br>${perfectPickups} precisionsräddningar · ${crashHits} hårda landningar</p><p>★ Uppdraget klart · ★ Under ${Math.round(L.par/60*10)/10} min<br>★ Inga hårda landningar och minst 65 % skrov</p>`,[{text:final?'VÄLJ UPPDRAG':'NÄSTA UPPDRAG',primary:true,run:final?selectMissions:()=>levels[level+1]?.lost?startLost():loadLevel(level+1)},{text:'FLYG IGEN',run:()=>loadLevel(level)},{text:'HUVUDMENY',run:toMenu}]);}
-function failMission(reason){if(mode!=='playing')return;if(L.lost){crashLost(reason);return;}mode='failed';explode(heli.x,heli.y,1.7);for(let i=0;i<5;i++)debris.push({x:heli.x+rand(-20,20),y:heli.y,vx:rand(-80,80),vy:rand(-80,-20),s:rand(.5,1),type:'falling'});showModal('SAR–07 / NÖDSIGNAL','Tillbaka i luften.',`<p>${reason||'Helikoptern klarade inte skadorna. Ditt senaste uppdrag kan startas om direkt.'}</p><p>Tips: börja bromsa innan du når målet. Motluta, räta upp och sänk dig långsamt. H stabiliserar höjden vid räddning.</p>`,[{text:'FÖRSÖK IGEN',primary:true,run:()=>school.active?startDrill(school.kind||'basic'):loadLevel(level)},{text:'VÄLJ UPPDRAG',run:selectMissions}]);}
+let wreck=null;
+// A crash you watch. Lift dies, the disc departs, panels shed, and the hull tumbles until it
+// comes to rest. Only then does the game tell you what happened.
+function beginWreck(reason,finish){
+ if(mode!=='playing')return;
+ mode='wreck';clearInput();$('mobile').hidden=true;
+ const speed=Math.hypot(heli.vx,heli.vy);
+ wreck={t:0,reason,finish,rest:0,bounces:0};
+ heli.collective=0;heli.rope=0;heli.ropeTarget=null;heli.landed=false;
+ // Whatever it was doing, it is now spinning: impact torque scaled by how fast it arrived.
+ heli.av+=(heli.vx>0?-1:1)*(1.4+clamp(speed/120,0,2.6))*(.6+Math.random());
+ heli.vy-=rand(20,70);
+ // The disc leaves first, and keeps its rotation.
+ debris.push({x:heli.x,y:heli.y-47,vx:heli.vx*.55+rand(-90,90),vy:-rand(90,220),
+  s:1,type:'rotor',rot:heli.angle,spin:rand(6,13)*(Math.random()<.5?-1:1)});
+ for(let i=0;i<4+Math.round(clamp(speed/70,0,4));i++)
+  debris.push({x:heli.x+rand(-26,26),y:heli.y+rand(-18,14),vx:heli.vx*.4+rand(-130,130),
+   vy:-rand(40,170),s:rand(.35,.85),type:'panel',rot:rand(0,6.28),spin:rand(-9,9)});
+ explode(heli.x,heli.y,.55);
+ for(let i=0;i<7;i++)addDent(rand(-58,46),rand(-30,20),rand(.4,1));
+ AudioState.sfx('hit');
+ shake=Math.max(shake,11);damageFlash=.3;
+}
+// The hull is now just a heavy object. Gravity, air, and a ground that takes something out of
+// it every time they meet.
+function updateWreck(dt){
+ wreck.t+=dt;
+ heli.vy+=315*dt;
+ heli.vx-=heli.vx*.55*dt;heli.vy-=heli.vy*.22*dt;
+ heli.angle+=heli.av*dt;heli.av-=heli.av*.35*dt;
+ heli.x=clamp(heli.x+heli.vx*dt,90,L.length-70);heli.y+=heli.vy*dt;
+ heli.rotor+=dt*heli.spool*20;heli.spool=Math.max(0,heli.spool-dt*.9);
+ const gy=gearSupport();
+ if(heli.y>=gy){
+  heli.y=gy;
+  const hit=Math.hypot(heli.vx,heli.vy);
+  if(heli.vy>28&&wreck.bounces<4){
+   wreck.bounces++;
+   heli.vy=-heli.vy*.34;heli.vx*=.55;heli.av=(heli.av+rand(-3,3))*.7;
+   addDent(rand(-55,45),rand(0,22),clamp(hit/150,.3,1));
+   explode(heli.x,heli.y,.22);shake=Math.max(shake,6);
+   for(let i=0;i<4;i++)addParticle(heli.x+rand(-20,20),gy,rand(-90,90),rand(-70,-10),'#e8c98e',3,.4,'dust');
+   AudioState.sfx('hit');
+  } else {heli.vy=0;heli.vx*=Math.exp(-6*dt);heli.av*=Math.exp(-5*dt);}
+ }
+ if(Math.random()<dt*22)smoke(heli.x+rand(-16,16),heli.y+rand(-12,8),rand(7,14),1.5,'#2c3033');
+ collideObstacles(dt);
+ updateCamera(dt);
+ const still=Math.abs(heli.vx)<26&&Math.abs(heli.vy)<26;
+ wreck.rest=still?wreck.rest+dt:0;
+ // Long enough to see it break, short enough to want to go again.
+ if((wreck.rest>.45&&wreck.t>1.1)||wreck.t>2.9){const done=wreck.finish,why=wreck.reason;wreck=null;done(why);}
+}
+function failMission(reason){if(mode!=='playing')return;beginWreck(reason,L.lost?crashLost:failNow);}
+function failNow(reason){mode='failed';explode(heli.x,heli.y,1.2);for(let i=0;i<5;i++)debris.push({x:heli.x+rand(-20,20),y:heli.y,vx:rand(-80,80),vy:rand(-80,-20),s:rand(.5,1),type:'falling'});showModal('SAR–07 / NÖDSIGNAL','Tillbaka i luften.',`<p>${reason||'Helikoptern klarade inte skadorna. Ditt senaste uppdrag kan startas om direkt.'}</p><p>Tips: börja bromsa innan du når målet. Motluta, räta upp och sänk dig långsamt. H stabiliserar höjden vid räddning.</p>`,[{text:'FÖRSÖK IGEN',primary:true,run:()=>school.active?startDrill(school.kind||'basic'):loadLevel(level)},{text:'VÄLJ UPPDRAG',run:selectMissions}]);}
 function settings(){if(!['menu','playing','paused'].includes(mode))return;const previous=mode;clearInput();mode='settings';showModal('FLIGHT CONTROLS','Ställ in flygningen.',`<label class="settingLabel" for="sensitivity">Styrkänslighet <b id="sensitivityValue">${Math.round(save.sensitivity*100)} %</b></label><input id="sensitivity" type="range" min="50" max="160" step="5" value="${Math.round(save.sensitivity*100)}"><p>Små utslag för precision. Stora utslag ger upp till 70° lutning. Motluta för att bromsa; öka lyftet i branta svängar.</p><button id="gyroEnable">${gyro.enabled?'STÄNG AV GYRO':'AKTIVERA GYRO'}</button> <button id="gyroCalibrate">KALIBRERA MITTLÄGE</button><p id="gyroStatus" role="status">${gyro.status}</p><label><input id="gyroInvert" type="checkbox" ${gyro.invert?'checked':''}> Omvänd gyroriktning</label><p>Håll iPhone/iPad bekvämt i liggande läge och kalibrera. Luta sedan vänster/höger. Skärmhalvor och gyro fungerar samtidigt. H / STABILISERA hjälper vid vinschning.</p>`,[{text:'FORTSÄTT',primary:true,run:()=>{save.sensitivity=clamp(Number($('sensitivity').value)/100,.5,1.6);persist();dismiss();mode=previous;$('mobile').hidden=mode!=='playing'||!coarse;updateHUD();AudioState.sync();if(previous==='paused'){mode='playing';pause()}}}]);$('sensitivity').oninput=()=>{$('sensitivityValue').textContent=$('sensitivity').value+' %';};$('gyroEnable').onclick=enableGyro;$('gyroCalibrate').onclick=calibrateGyro;$('gyroInvert').onchange=e=>{gyro.invert=e.target.checked;gyro.filtered=0;};}
 
 function selectMissions(){mode='select';$('menu').hidden=true;showModal('FLIGHT OPERATIONS','Välj uppdrag.','<div class="missionlist" id="missionList"></div><p>TESTFLYGNING: alla uppdrag är upplåsta. Stjärnor och poäng sparas på den här enheten.</p>',[{text:'TILLBAKA',run:toMenu}]);const list=$('missionList');levels.forEach((l,i)=>{const b=document.createElement('button'),r=save.results[i],locked=!TEST_FLIGHT&&i>save.unlocked;b.disabled=locked;b.innerHTML=`<b>${String(i+1).padStart(2,'0')} / ${l.region.toUpperCase()}</b>${l.name}<span>${locked?'LÅST — KLARA FÖREGÅENDE':r?'★'.repeat(r.stars)+'☆'.repeat(3-r.stars)+' · '+fmt(r.score)+' poäng':'REDO FÖR START'}</span>`;b.onclick=()=>l.lost?startLost():loadLevel(i);list.append(b);});}
@@ -631,7 +726,7 @@ function lostSnapshot(){return{cp:lost.cp,secret:lost.secret,hp:heli.hp,fuel:hel
 function startLost(fresh=false){const previous=readLost(),saved=fresh?null:previous;loadLevel(7);lost={active:true,cp:clamp(saved?.snapshot?.cp||0,0,lostPads.length-1),hold:0,best:previous?.best||0,crashes:saved?.crashes||0,total:saved?.total||0,secret:!!saved?.snapshot?.secret,returning:false,returnService:new Set(),snapshot:saved?.snapshot||null,lastSave:0,reason:'',recordShown:saved?.best||0};restoreLostPosition();if(!lost.snapshot)lost.snapshot=lostSnapshot();saveLost();$('modalTag').textContent='THE LOST VALLEY · LÅNGFÄRD';$('modalTitle').textContent=saved?.snapshot?'En gång till.':'Varje meter räknas.';$('modalBody').innerHTML='<p>Flyg till Rescue Beacon, vinscha upp två personer och ta er hela vägen hem till Eagle Base.</p><p>Landa lugnt på markerade reläplattor för att spara en checkpoint. Klippkanter är fasta. Träd och dimma är bakgrund. Gruvan är en kortare, trängre väg; flyg över berget om du vill ha mer utrymme.</p><p>Vinden går i samma 14-sekundersmönster varje försök. En krasch tar dig till senaste sparade checkpoint. Efter räddningen måste du fortfarande flyga hem.</p><p>En fyra gånger längre dal med elva landningsstationer längs vägen. Ta pauser, fyll på bränsle och fortsätt från din senaste checkpoint.</p>';document.body?.classList.add('lostMode');updateHUD();}
 function restoreLostPosition(){const p=lostPads[lost.cp];heli.x=p.x;heli.y=ground(p.x)-30.8;heli.vx=heli.vy=heli.angle=heli.av=heli.bank=0;heli.hp=clamp(lost.snapshot?.hp||100,45,100);heli.fuel=clamp(lost.snapshot?.fuel||100,55,100);heli.rockets=8;heli.flares=4;heli.landed=true;heli.airborne=false;zoom=1;applyView();camera=clamp(heli.x-vw*.43,0,L.length-vw);cameraY=heli.y-vh*.5;}
 function retryLost(){const old={...lost};loadLevel(7,false);lost={...old,active:true,hold:0,returning:false,returnService:new Set(),secret:!!old.snapshot?.secret,lastSave:0};time=0;restoreLostPosition();document.body?.classList.add('lostMode');$('menu').hidden=true;begin();radio('Tyngdkraften vann den här ronden. Vi försöker igen.',4);}
-function crashLost(reason){if(mode!=='playing')return;lost.crashes++;lost.reason=reason||lost.reason||'Hård kontakt med terrängen.';saveLost();mode='failed';clearInput();$('mobile').hidden=true;explode(heli.x,heli.y,.8);const jokes=['Helikoptern har upptäckt tyngdkraften.','Det där var nästan en landning. Känslomässigt.',
+function crashLost(reason){lost.crashes++;lost.reason=reason||lost.reason||'Hård kontakt med terrängen.';saveLost();mode='failed';clearInput();$('mobile').hidden=true;const jokes=['Helikoptern har upptäckt tyngdkraften.','Det där var nästan en landning. Känslomässigt.',
   'Mycket nära. Berget höll inte med.','Du har låst upp: ett nytt försök.',
   'Utmärkt flygning. Fruktansvärt resmål.','Träden är fortfarande obesegrade.',
   'Nytt rekord: snabbaste vägen tillbaka till checkpointen.','Åtminstone såg ingen det där.',

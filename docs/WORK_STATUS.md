@@ -33,6 +33,24 @@ This pass reworked the camera and the HUD.
   and the combat buttons. `drawMap` is gone.
 - Narrow screens drop the aboard counter and move bearing/range to a tab under the rail.
 
+## Crashing
+
+A crash used to cut straight to the modal: the craft was destroyed off-screen and you were told
+about it. Now you watch it. On a fatal hit the game enters a wreck phase — lift dies, the main
+rotor detaches and spins away keeping its rotation, panels shed, and the hull tumbles under
+gravity and drag with impact torque scaled by how fast it arrived. Each ground contact bounces
+with energy loss, throws dust, and adds another dent. The camera follows throughout, which is
+why the camera update was lifted out of the flight path into its own function.
+
+The modal waits until the wreck settles, or 2.9 seconds, whichever comes first. Both matter: in
+a game you crash in a hundred times the sequence has to be watchable, not long. Two tuning
+faults were found by watching it — micro-bounces meant the settle test never held, so every
+wreck ran to the cap; and requiring ground contact to count as settled meant a wreck that came
+to rest on top of an obstacle never settled at all.
+
+Damage is real deformation now, not decals: panel vertices are pulled toward each dent as they
+are projected, so the silhouette crumples where it was struck.
+
 ## Impact damage
 
 Strikes now leave marks where they land. The collision pass already knew which point of the
@@ -193,7 +211,7 @@ of flying it. A test asserts every gate admits the craft at full tilt.
 
 ## Testing
 
-- `npm test` — 16 suites covering touch input, checkpoints, rescue and return, portrait fill,
+- `npm test` — 17 suites covering touch input, checkpoints, rescue and return, portrait fill,
   altitude zoom-out framing, zoom saturation, the instrument rail contents and its
   write-on-change behaviour, the valley rail (including pads lighting as checkpoints bank),
   the hull/fuel/height alert states, and the new guides under every draw state.
