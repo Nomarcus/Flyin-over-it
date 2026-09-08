@@ -130,30 +130,100 @@ const HULL=[
  [-52,-22,13],[-72,-24,12],[-92,-25,11],[-105,-24,7],   // tail boom and tail rotor
  [-50,-60,12],                                          // vertical fin
  [-88,-47,6],[-59,-47,6],[-30,-47,6],[0,-47,6],[30,-47,6],[59,-47,6],[88,-47,6]];
-function collideObstacles(dt){for(const o of obstacles){
-  // Skip anything the craft cannot reach this tick before testing nineteen points against it.
-  if(o.x-125>heli.x||o.x+o.w+125<heli.x)continue;for(const [lx,ly,r] of HULL){const p=rotateLocal(lx*(heli.dir===1?1:-1),ly);
-   let ax=o.x,bx=o.x+o.w;
-   if(o.type==='pillar'){const t=clamp((p.y-o.y)/o.h,0,1);ax=lerp(o.tx,o.x,t);bx=lerp(o.tx+o.topW,o.x+o.w,t);}
-   const nx=clamp(p.x,ax,bx),ny=clamp(p.y,o.y,o.y+o.h+(o.drip||0));let dx=p.x-nx,dy=p.y-ny,d=Math.hypot(dx,dy);if(d>=r)continue;if(d<.001){const gaps=[p.x-o.x,o.x+o.w-p.x,p.y-o.y,o.y+o.h-p.y],m=Math.min(...gaps),j=gaps.indexOf(m);dx=j===0?-1:j===1?1:0;dy=j===2?-1:j===3?1:0;d=-m;}else{dx/=d;dy/=d;}const impact=Math.max(0,-heli.vx*dx-heli.vy*dy);heli.x+=dx*(r-d+.1);heli.y+=dy*(r-d+.1);if(impact>0){heli.vx+=dx*impact*1.15;heli.vy+=dy*impact*1.15;}heli.av*=.6;if(impact>18){if(L.lost)lost.reason='Rotorn eller skrovet slog i klippan. Bromsa tidigare och håll mer avstånd.';hitHeli(Math.min(42,6+impact*.16));addDent(lx,ly,clamp(impact/95,.2,1));smoke(p.x,p.y,6,.3,'#aeae89');}break;}}}
+// The narrow phase uses the actual painted polygon, including the roof's solid lip.
+function obstaclePolygon(o){return o.type==='pillar'?[[o.tx,o.y],[o.tx+o.topW,o.y],[o.x+o.w,o.y+o.h],[o.x,o.y+o.h]]:[[o.x,o.y],[o.x+o.w,o.y],[o.x+o.w,o.y+o.h+(o.drip||0)],[o.x,o.y+o.h+(o.drip||0)]];}
+function circleContact(x,y,r,poly){
+ let inside=true,best=null;
+ for(let i=0;i<poly.length;i++){
+  const a=poly[i],b=poly[(i+1)%poly.length],ex=b[0]-a[0],ey=b[1]-a[1],len=Math.hypot(ex,ey)||1;
+  if(ex*(y-a[1])-ey*(x-a[0])<0)inside=false;
+  const t=clamp(((x-a[0])*ex+(y-a[1])*ey)/(len*len),0,1),qx=a[0]+ex*t,qy=a[1]+ey*t,d=Math.hypot(x-qx,y-qy);
+  if(!best||d<best.d)best={d,qx,qy,nx:ey/len,ny:-ex/len};
+ }
+ if(!inside&&best.d>=r)return null;
+ if(!inside&&best.d>1e-7){best.nx=(x-best.qx)/best.d;best.ny=(y-best.qy)/best.d;}
+ return {...best,depth:inside?r+best.d:r-best.d};
+}
+function terrainContact(x,y,r){
+ if(y+r<Math.min(ground(x-r),ground(x),ground(x+r)))return null;
+ let best=null;const start=Math.floor(x/40)*40-40;
+ for(let xx=start;xx<start+120;xx+=40){
+  const ay=ground(xx),by=ground(xx+40),ex=40,ey=by-ay,len=Math.hypot(ex,ey);
+  const t=clamp(((x-xx)*ex+(y-ay)*ey)/(len*len),0,1),qx=xx+t*ex,qy=ay+t*ey,d=Math.hypot(x-qx,y-qy);
+  if(!best||d<best.d)best={d,qx,qy,nx:ey/len,ny:-ex/len};
+ }
+ const inside=y>=ground(x);if(!inside&&best.d>=r)return null;
+ if(!inside&&best.d>1e-7){best.nx=(x-best.qx)/best.d;best.ny=(y-best.qy)/best.d;}
+ return {...best,depth:inside?r+best.d:r-best.d};
+}
+function collisionSamples(){
+ const yaw=heli.turn>0?heli.yaw:(heli.dir===1?0:Math.PI),out=[];
+ for(let i=0;i<15;i++){
+  let [lx,ly,r]=HULL[i];if(i===14){lx=-100;ly=-39;r=9;}
+  const q=projectHeliPoint(lx,ly,0,yaw,heli.bank);
+  out.push({x:q.x,y:q.y,r,lx,ly,part:i>=10?'tail':i>=4&&i<=6?'gear':'hull'});
+ }
+ // A rotating disc has a projected ellipse, not an instantaneous left/right line.
+ if(mode!=='wreck')for(let i=0;i<32;i++){
+  const ang=i*TAU/32,q=projectHeliPoint(Math.cos(ang)*90,-47,Math.sin(ang)*90,yaw,heli.bank);
+  out.push({x:q.x,y:q.y,r:3,lx:Math.cos(ang)*90,ly:-47,part:'rotor'});
+ }
+ return out;
+}
+function collideObstacles(dt){
+ const samples=collisionSamples(),c=Math.cos(heli.angle),sn=Math.sin(heli.angle);let strongest=null;
+ // Several shallow corrections resolve corners without taking damage once per sample.
+ for(let pass=0;pass<4;pass++){
+  let deepest=null;
+  for(const o of obstacles){
+   if(o.x-145>heli.x||o.x+o.w+145<heli.x)continue;const shape=obstaclePolygon(o);
+   for(const q of samples){
+    const px=heli.x+q.x*c-q.y*sn,py=heli.y+q.x*sn+q.y*c,k=circleContact(px,py,q.r,shape);
+    if(k&&(!deepest||k.depth>deepest.depth))deepest={...k,q,px,py};
+   }
+  }
+  // Skid landings retain their existing suspension. Nose, tail and rotor cannot pass through slopes.
+  for(const q of samples){if(q.part==='gear')continue;
+   const px=heli.x+q.x*c-q.y*sn,py=heli.y+q.x*sn+q.y*c,k=terrainContact(px,py,q.r);
+   if(k&&(!deepest||k.depth>deepest.depth))deepest={...k,q,px,py};
+  }
+  if(!deepest)break;
+  const k=deepest,impact=Math.max(0,-heli.vx*k.nx-heli.vy*k.ny);
+  heli.x+=k.nx*(k.depth+.02);heli.y+=k.ny*(k.depth+.02);
+  if(impact>0){heli.vx+=k.nx*impact*1.15;heli.vy+=k.ny*impact*1.15;heli.av*=.6;}
+  if(!strongest||impact>strongest.impact)strongest={...k,impact};
+ }
+ if(strongest&&strongest.impact>18&&heli.hitCd<=0&&mode==='playing'){
+  const k=strongest;
+  if(L.lost)lost.reason=k.q.part==='rotor'?'Rotorn slog i klippan. Lämna mer utrymme ovanför och åt sidorna.':'Helikoptern slog i klippan. Bromsa tidigare inför passagen.';
+  // Mark first: a fatal strike should be visible during the ensuing wreck animation.
+  addDent(k.q.lx,k.q.ly,clamp(k.impact/95,.2,1),k.q.part);
+  hitHeli(Math.min(42,6+k.impact*.16),k.qx,k.qy);smoke(k.qx,k.qy,6,.3,'#aeae89');
+ }
+}
 function weapon(){const yaw=heli.turn>0?heli.yaw:(heli.dir===1?0:Math.PI),p=projectHeliPoint(54,13,18,yaw,heli.bank),tip=projectHeliPoint(80,13,18,yaw,heli.bank),c=Math.cos(heli.angle),sn=Math.sin(heli.angle),dx=(tip.x-p.x)*c-(tip.y-p.y)*sn,dy=(tip.x-p.x)*sn+(tip.y-p.y)*c,n=Math.hypot(dx,dy)||1;return{x:heli.x+p.x*c-p.y*sn,y:heli.y+p.x*sn+p.y*c,dx:dx/n,dy:dy/n};}
 function segmentDist(ax,ay,bx,by,x,y){let dx=bx-ax,dy=by-ay;const t=clamp(((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy||1),0,1);return Math.hypot(ax+dx*t-x,ay+dy*t-y)}
 // Record where the airframe was struck. Nearby hits deepen an existing dent instead of
 // stacking decals, the way a panel keeps taking the same beating.
-function addDent(lx,ly,severity){
+function addDent(lx,ly,severity,part=null){
  const d=heli.dents;
- if(Math.abs(lx)>58&&ly<-38){heli.rotorHurt=Math.min(1,(heli.rotorHurt||0)+severity*.8);lx=rand(-16,16);ly=-31;}
- lx=clamp(lx,-62,50);ly=clamp(ly,-33,24);
- for(const k of d)if(Math.hypot(k.x-lx,k.y-ly)<13){k.s=Math.min(1,k.s+severity*.55);return}
- if(d.length>13)d.shift();
- d.push({x:lx,y:ly,s:clamp(severity,.18,1),seed:Math.abs(lx*7.3+ly*3.1)%97});
+ if(part==='rotor'||(!part&&Math.abs(lx)>58&&ly<-38)){
+  heli.rotorHurt=Math.min(1,(heli.rotorHurt||0)+severity*.8);return;
+ }
+ part=part||(ly>18?'gear':lx<-42?'tail':'hull');
+ if(part==='tail'){if(ly<-32){lx=clamp(lx,-103,-96);ly=clamp(ly,-41,-22);}else{lx=clamp(lx,-103,-43);const mid=-13+(lx+101)*.18,half=1.5+(lx+103)*.055;ly=clamp(ly,mid-half,mid+half);}}
+ else if(part==='gear'){lx=clamp(lx,-42,46);ly=28;}
+ else{lx=clamp(lx,-40,50);ly=clamp(ly,-30,16);if(lx>30){const mid=lerp(-3,5,(lx-30)/20);ly=clamp(ly,mid-2,mid+3);}}
+ for(const k of d)if(k.part===part&&Math.hypot(k.x-lx,k.y-ly)<13){k.s=Math.min(1,k.s+severity*.55);return;}
+ if(d.length>=14)d.shift();
+ d.push({x:lx,y:ly,part,s:clamp(severity,.18,1),seed:Math.abs(lx*7.3+ly*3.1)%97});
 }
 function repairDents(amount){
  heli.rotorHurt=Math.max(0,(heli.rotorHurt||0)-amount);
  for(const k of heli.dents)k.s-=amount;
  heli.dents=heli.dents.filter(k=>k.s>.08);
 }
-function hitHeli(amount){if(heli.hitCd>0||mode!=='playing')return;heli.hp=clamp(heli.hp-amount,0,100);heli.hitCd=.18;damageFlash=.18;shake=Math.max(shake,5);for(let i=0;i<7;i++)addParticle(heli.x,heli.y,rand(-100,100),rand(-90,90),'#ffd09a',3,.5);AudioState.sfx('hit');if(heli.hp<=0)failMission();}
+function hitHeli(amount,impactX=heli.x,impactY=heli.y){if(heli.hitCd>0||mode!=='playing')return;heli.hp=clamp(heli.hp-amount,0,100);heli.hitCd=.18;damageFlash=.18;shake=Math.max(shake,5);for(let i=0;i<7;i++)addParticle(impactX,impactY,rand(-100,100),rand(-90,90),'#ffd09a',3,.5);AudioState.sfx('hit');if(heli.hp<=0)failMission();}
 function damageEnemy(e,dmg){if(e.hp<=0)return;e.hp-=dmg;e.flash=.12;if(e.hp<=0){e.hp=0;missionKills++;combo=comboTimer>0?combo+1:1;comboTimer=8;const gain=250+Math.min(3,combo-1)*50;score+=gain;popup(e.x,e.y-35,'+'+gain);explode(e.x,e.y,1.15);debris.push({x:e.x,y:e.y,s:1,type:'tank'});if(enemies.every(v=>v.hp<=0)&&L.clear)radio('Korridoren är säkrad. Hämta besättningen och kom hem.');}else{for(let i=0;i<4;i++)addParticle(e.x+rand(-14,14),e.y-10,rand(-60,60),rand(-100,-20),'#efba7c',2,.4)}}
 function updateCamera(dt){
  // Pull back as the craft climbs: enough world height for the floor to stay just inside the
@@ -498,7 +568,8 @@ function drawDents(dir){
  if(!heli.dents||!heli.dents.length)return;
  ctx.save();
  for(const k of heli.dents){
-  const x=k.x*dir,y=k.y,r=2.4+k.s*4.4,shade=hash(k.seed);
+  const yaw=heli.turn>0?heli.yaw:(dir===1?0:Math.PI),pos=(k.part==='gear'?gearPoint:projectHeliPoint)(k.x,k.y-(k.part==='gear'?heli.compression:0),0,yaw,heli.bank);
+  const x=pos.x,y=pos.y,r=(k.part==='tail'?1.4:2.4)+k.s*(k.part==='gear'?2:4.4),shade=hash(k.seed);
   ctx.save();ctx.translate(x,y);
   const pts=[];
   for(let i=0;i<7;i++){const ang=i/7*TAU,rr=r*(.5+hash(k.seed+i*3)*.8);
@@ -512,7 +583,7 @@ function drawDents(dir){
   }
   if(k.s>.62){
    poly(pts.slice(2,6),'rgba(38,30,26,'+(.3+shade*.2).toFixed(2)+')');
-   ellipse(0,0,r*.34,r*.26,'rgba(12,16,18,.6)');
+   line(-r*.5,r*.15,r*.35,-r*.22,'#d6dad078',.9);line(-r*.45,r*.28,r*.5,-r*.12,'#132b3cb0',1.1);
   }
   ctx.restore();
  }
@@ -526,7 +597,7 @@ function heliBody(x,y,a,dir,t=0,isBoss=false){
   if(isBoss||!heli.dents||!heli.dents.length)return p;
   let ox=0,oy=0;
   for(const k of heli.dents){
-   const kx=k.x*dir,ky=k.y,d=Math.hypot(p.x-kx,p.y-ky),R=11+k.s*16;
+   const kp=(k.part==='gear'?gearPoint:projectHeliPoint)(k.x,k.y-(k.part==='gear'?heli.compression:0),0,yaw,heli.bank),kx=kp.x,ky=kp.y,d=Math.hypot(p.x-kx,p.y-ky),R=11+k.s*16;
    if(d>R||d<.01)continue;
    const pull=k.s*4.6*(1-d/R);
    ox+=(kx-p.x)/d*pull;oy+=(ky-p.y)/d*pull;
@@ -596,7 +667,7 @@ function heliBody(x,y,a,dir,t=0,isBoss=false){
  // Barrel shares its exact origin with weapon().
  
  const rotor=isBoss?visualTime*55:heli.rotor;
- for(let blade=0;blade<2;blade++){const ang=rotor+blade*Math.PI,c=Math.cos(ang),sn=Math.sin(ang),r1=5,r2=91,w=2.4;face([[c*r1-sn*w,-47,sn*r1+c*w],[c*r2-sn*w,-47,sn*r2+c*w],[c*r2+sn*w,-47,sn*r2-c*w],[c*r1+sn*w,-47,sn*r1-c*w]],'#152838ec');}
+ if(isBoss||mode!=='wreck')for(let blade=0;blade<2;blade++){const ang=rotor+blade*Math.PI,c=Math.cos(ang),sn=Math.sin(ang),r1=5,r2=91,w=2.4;face([[c*r1-sn*w,-47,sn*r1+c*w],[c*r2-sn*w,-47,sn*r2+c*w],[c*r2+sn*w,-47,sn*r2-c*w],[c*r1+sn*w,-47,sn*r1-c*w]],'#152838ec');}
  // Painter sorting keeps roof, skids, windows and blades in the correct depth order.
  faces.sort((a,b)=>a.z-b.z);for(const f of faces){const pts=f.pp.map(p=>[p.x,p.y]);poly(pts,f.color);if(f.color.length===7){const ys=f.pp.map(p=>p.y),topY=Math.min(...ys),bottomY=Math.max(...ys);if(bottomY-topY>4){const light=ctx.createLinearGradient(-30,topY,45,bottomY);light.addColorStop(0,'#fff7df40');light.addColorStop(.5,'#fff2c500');light.addColorStop(1,'#071b3a50');poly(pts,light);}}}
  // Surface decals are projected onto the visible cabin after the volume pass.
@@ -614,7 +685,7 @@ function heliBody(x,y,a,dir,t=0,isBoss=false){
  const bent=isBoss?0:(heli.rotorHurt||0);
  const disk=[];for(let j=0;j<=40;j++){const ang=j/40*TAU,wob=1-bent*.09*Math.abs(Math.sin(ang*2+rotor*.3));
   const p=point([Math.cos(ang)*92*wob,-47+bent*Math.sin(ang*2+rotor*.3)*3.5,Math.sin(ang)*92*wob]);disk.push([p.x,p.y]);}
- poly(disk,bent>.25?'#e1efdf07':'#e1efdf0b');if(!reduceMotion){for(let j=0;j<3;j++){ctx.beginPath();for(let k=0;k<14;k++){const ang=rotor*.3+j*TAU/3+k*.042,p=point([Math.cos(ang)*88,-47,Math.sin(ang)*88]);k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)}ctx.strokeStyle='#dce9ce25';ctx.lineWidth=1.2;ctx.stroke();}}
+ if(isBoss||mode!=='wreck')poly(disk,bent>.25?'#e1efdf07':'#e1efdf0b');if(!reduceMotion&&(isBoss||mode!=='wreck')){for(let j=0;j<3;j++){ctx.beginPath();for(let k=0;k<14;k++){const ang=rotor*.3+j*TAU/3+k*.042,p=point([Math.cos(ang)*88,-47,Math.sin(ang)*88]);k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)}ctx.strokeStyle='#dce9ce25';ctx.lineWidth=1.2;ctx.stroke();}}
  const hub=point([-1,-48,0]);ellipse(hub.x,hub.y,5,2.6,'#c9d4b8');
  const tail=point([-100,-22,4]);ctx.save();ctx.translate(tail.x,tail.y);ctx.rotate(rotor*1.9);line(-12,0,12,0,'#173947',2);line(0,-12,0,12,'#173947',2);ctx.restore();ellipse(tail.x,tail.y,13,13,'#c7ded00d');
  const lamp=point([-26,-24,16]);ellipse(lamp.x,lamp.y,2.2,2.2,Math.sin(visualTime*4)>0?'#ed9b79':'#815e53');
@@ -1074,4 +1145,5 @@ addEventListener('blur',()=>{if(lost.active)saveLost();clearInput();if(mode==='p
 let previous=0,accumulator=0;function frame(now){const dt=Math.min(.08,(now-previous)/1000||0);previous=now;accumulator+=dt;while(accumulator>=1/120){fixedUpdate(1/120);accumulator-=1/120;}Music.want(musicForState());Music.update(dt);render();requestAnimationFrame(frame);}
 resize();loadLevel(0,false);if(save.unlocked>0)$('startBtn').innerHTML='FORTSÄTT KAMPANJ <span>→</span>';requestAnimationFrame(frame);
 })();
+
 
