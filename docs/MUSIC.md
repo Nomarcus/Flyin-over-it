@@ -117,6 +117,11 @@ No terminal needed:
    `debrief.mp3`, `school.mp3`, `jungle.mp3`
 4. **Commit changes** to `main`
 
+> **Watch the filename.** If your export is already called `title.mp3`, some browsers and
+> upload dialogs will save it as `title.mp3.mp3`. The game asks for `music/title.mp3` exactly,
+> so a doubled extension is a 404 and a silent game. `npm test` now fails on any file in
+> `dist/music/` whose name is not one the game actually requests.
+
 The deploy runs itself and the game picks them up. Add them one at a time if you like — a
 missing file is skipped and falls back to another track.
 

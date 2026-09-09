@@ -4,7 +4,7 @@
   "description": "Seven varied helicopter rescue, cargo and firefighting missions with physical touch flight.",
   "private": true,
   "scripts": {
-    "test": "node tools/verify-touch.cjs && node tools/verify-graphics.cjs && node tools/verify-collisions.cjs && node tools/verify-operations.cjs && node tools/verify-water-fire.cjs"
+    "test": "node tools/verify-touch.cjs && node tools/verify-graphics.cjs && node tools/verify-collisions.cjs && node tools/verify-operations.cjs && node tools/verify-water-fire.cjs && node tools/verify-audio.cjs"
   },
   "devDependencies": {
     "@napi-rs/canvas": "0.1.100"

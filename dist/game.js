@@ -143,7 +143,7 @@ function radio(text,duration=5){$('radioText').textContent=text;radioTimer=durat
 function popup(x,y,text,color='#e7c788'){texts.push({x,y,text,color,life:1.7});}
 function addParticle(x,y,vx,vy,color,size=3,life=.7,kind='spark',z=0){if(particles.length>340)particles.shift();particles.push({x,y,z,vx,vy,color,size,life,max:life,kind,angle:rand(0,TAU)});}
 function smoke(x,y,size=8,life=.7,color='#273643',z=0){if(smokes.length>120)smokes.shift();smokes.push({x,y,z,size,life,max:life,color,vx:rand(-12,12)});}
-function explode(x,y,power=1,z=0){for(let i=0;i<28*power;i++){const a=rand(0,TAU),v=rand(40,240)*power;addParticle(x,y,Math.cos(a)*v,Math.sin(a)*v,i%3?'#eea155':'#fff0b5',rand(2,6)*power,rand(.35,1.1),'spark',z);}for(let i=0;i<7;i++)smoke(x+rand(-15,15),y+rand(-15,10),rand(10,25)*power,rand(1,2),'#293039',z);bursts.push({x,y,z,r:7,life:.45,max:.45,power});shake=Math.max(shake,7*power);AudioState.sfx('boom');}
+function explode(x,y,power=1,z=0){for(let i=0;i<28*power;i++){const a=rand(0,TAU),v=rand(40,240)*power;addParticle(x,y,Math.cos(a)*v,Math.sin(a)*v,i%3?'#eea155':'#fff0b5',rand(2,6)*power,rand(.35,1.1),'spark',z);}for(let i=0;i<7;i++)smoke(x+rand(-15,15),y+rand(-15,10),rand(10,25)*power,rand(1,2),'#293039',z);bursts.push({x,y,z,r:7,life:.45,max:.45,power});shake=Math.max(shake,7*power);AudioState.sfx('boom',x);}
 function rotateLocal(x,y){const c=Math.cos(heli.angle),s=Math.sin(heli.angle);return{x:heli.x+x*c-y*s,y:heli.y+x*s+y*c};}
 function projectHeliPoint(x,y,z,yaw,bank=0){const by=y*Math.cos(bank)-z*Math.sin(bank),bz=y*Math.sin(bank)+z*Math.cos(bank);y=by;z=bz;const c=Math.cos(yaw),sn=Math.sin(yaw),rx=x*c+z*sn,rz=-x*sn+z*c;return{x:rx+rz*.34,y:y-rz*.40,depth:rz-y*.40};}
 function gearPoint(x,y,z,yaw,bank=0){const p=projectHeliPoint(x,y,z,yaw,bank),rz=-x*Math.sin(yaw)+(y*Math.sin(bank)+z*Math.cos(bank))*Math.cos(yaw);p.y+=rz*.40*clamp((y-14)/8,0,1);return p;}
@@ -227,7 +227,7 @@ function collideObstacles(dt){
   if(L.lost)lost.reason=k.q.part==='rotor'?'Rotor strike. Leave more room above and to the sides.':'Rock impact. Brake earlier before the passage.';
   // Mark first: a fatal strike should be visible during the ensuing wreck animation.
   addDent(k.q.lx,k.q.ly,clamp(k.impact/95,.2,1),k.q.part);
-  hitHeli(Math.min(42,6+k.impact*.16),k.qx,k.qy);smoke(k.qx,k.qy,6,.3,'#aeae89');
+  hitHeli(Math.min(42,6+k.impact*.16),k.qx,k.qy,k.q.part);smoke(k.qx,k.qy,6,.3,'#aeae89');
  }
 }
 function weapon(){const yaw=heli.turn>0?heli.yaw:(heli.dir===1?0:Math.PI),p=projectHeliPoint(54,13,18,yaw,heli.bank),tip=projectHeliPoint(80,13,18,yaw,heli.bank),c=Math.cos(heli.angle),sn=Math.sin(heli.angle),dx=(tip.x-p.x)*c-(tip.y-p.y)*sn,dy=(tip.x-p.x)*sn+(tip.y-p.y)*c,n=Math.hypot(dx,dy)||1;return{x:heli.x+p.x*c-p.y*sn,y:heli.y+p.x*sn+p.y*c,dx:dx/n,dy:dy/n};}
@@ -252,7 +252,7 @@ function repairDents(amount){
  for(const k of heli.dents)k.s-=amount;
  heli.dents=heli.dents.filter(k=>k.s>.08);
 }
-function hitHeli(amount,impactX=heli.x,impactY=heli.y){if(heli.hitCd>0||mode!=='playing')return;heli.hp=clamp(heli.hp-amount,0,100);heli.hitCd=.18;damageFlash=.18;shake=Math.max(shake,5);for(let i=0;i<7;i++)addParticle(impactX,impactY,rand(-100,100),rand(-90,90),'#ffd09a',3,.5);AudioState.sfx('hit');if(heli.hp<=0)failMission();}
+function hitHeli(amount,impactX=heli.x,impactY=heli.y,part=null){if(heli.hitCd>0||mode!=='playing')return;heli.hp=clamp(heli.hp-amount,0,100);heli.hitCd=.18;damageFlash=.18;shake=Math.max(shake,5);for(let i=0;i<7;i++)addParticle(impactX,impactY,rand(-100,100),rand(-90,90),'#ffd09a',3,.5);AudioState.sfx(part==='rotor'?'strike':'hit',impactX);if(heli.hp<=0)failMission();}
 function damageEnemy(e,dmg){if(e.hp<=0)return;e.hp-=dmg;e.flash=.12;if(e.hp<=0){e.hp=0;missionKills++;combo=comboTimer>0?combo+1:1;comboTimer=8;const gain=250+Math.min(3,combo-1)*50;score+=gain;popup(e.x,e.y-35,'+'+gain);explode(e.x,e.y,1.15);debris.push({x:e.x,y:e.y,s:1,type:'tank'});if(enemies.every(v=>v.hp<=0)&&L.clear)radio('Corridor secured. Pick up the crew and come home.');}else{for(let i=0;i<4;i++)addParticle(e.x+rand(-14,14),e.y-10,rand(-60,60),rand(-100,-20),'#efba7c',2,.4)}}
 function updateCamera(dt){
  // Pull back as the craft climbs: enough world height for the floor to stay just inside the
@@ -300,7 +300,7 @@ function fixedUpdate(dt){visualTime+=dt;updateEffects(dt);
  if(heli.x<90||heli.x>L.length-70){heli.x=clamp(heli.x,90,L.length-70);heli.vx*=-.2;}// Open sky: altitude is not limited by an invisible ceiling.
 
  let gy=gearSupport();const wasLanded=heli.landed;heli.landed=false;
- if(heli.y>=gy){const impact=Math.hypot(heli.vx*.55,heli.vy);if(!wasLanded&&heli.airborne){landings++;if(school.active&&school.stage===2){school.cleanLanding=impact<55&&Math.abs(heli.angle)<.2;if(!school.cleanLanding)radio('A little too hard. Lift again and descend more slowly onto the pad.',5);}if(impact>87||Math.abs(heli.angle)>.34){const dmg=Math.min(65,(Math.max(0,impact-62)*.42)+Math.abs(heli.angle)*28);if(L.lost)lost.reason='Too much speed or tilt at ground contact.';hitHeli(dmg);addDent(rand(-30,34),22,clamp(impact/110,.2,.9));crashHits++;radio('Hard landing. Brake early and level out before touchdown.',4);smoke(heli.x,gy,25,1,'#6b6759');}else if(impact<38&&Math.abs(heli.angle)<.13){const landingKey=Math.round(heli.x/150);if(!precision.landings.has(landingKey)){precision.landings.add(landingKey);score+=75;popup(heli.x,heli.y-58,'SOFT LANDING +75');}else popup(heli.x,heli.y-58,'SOFT LANDING');}}if(!wasLanded)heli.compression=clamp(impact*.045,0,5.5);
+ if(heli.y>=gy){const impact=Math.hypot(heli.vx*.55,heli.vy);if(!wasLanded&&heli.airborne){landings++;AudioState.sfx(impact>87?'touchHard':'touch');if(school.active&&school.stage===2){school.cleanLanding=impact<55&&Math.abs(heli.angle)<.2;if(!school.cleanLanding)radio('A little too hard. Lift again and descend more slowly onto the pad.',5);}if(impact>87||Math.abs(heli.angle)>.34){const dmg=Math.min(65,(Math.max(0,impact-62)*.42)+Math.abs(heli.angle)*28);if(L.lost)lost.reason='Too much speed or tilt at ground contact.';hitHeli(dmg);addDent(rand(-30,34),22,clamp(impact/110,.2,.9));crashHits++;radio('Hard landing. Brake early and level out before touchdown.',4);smoke(heli.x,gy,25,1,'#6b6759');}else if(impact<38&&Math.abs(heli.angle)<.13){const landingKey=Math.round(heli.x/150);if(!precision.landings.has(landingKey)){precision.landings.add(landingKey);score+=75;popup(heli.x,heli.y-58,'SOFT LANDING +75');}else popup(heli.x,heli.y-58,'SOFT LANDING');}}if(!wasLanded)heli.compression=clamp(impact*.045,0,5.5);
  const slope=Math.atan2(ground(heli.x+38)-ground(heli.x-37),75);
  // The gear only takes up so much hill. Lying flat along a steep slope pointed the rotor at
  // the hillside instead of the sky, and since lift is cos(angle) of thrust, anything past
@@ -351,8 +351,8 @@ function simulateRope(dt,mount){
 function updateWinch(dt){if(ops?.bucket){updateBucketWinch(dt);return;}const held=!!keys.KeyE,mount=winchMount(),h=heli;const minLength=h.ropeTarget?.kind==='cargo'?49:0;
  const target=held?185:minLength,speed=held?95:h.ropeTarget?.kind==='cargo'?62:112;
  h.rope+=clamp(target-h.rope,-speed*dt,speed*dt);h.rope=clamp(h.rope,0,185);simulateRope(dt,mount);
- if(held&&Math.abs(heli.z)<14&&!heli.ropeTarget&&heli.rope>20&&Math.abs(heli.vx)<72&&Math.abs(heli.vy)<72){const p=people.find(p=>p.status==='waiting'&&Math.hypot(p.x-heli.hookX,p.y-20-heli.hookY)<25);if(p){p.status='attached';heli.ropeTarget={kind:'person',ref:p};AudioState.sfx('attach');radio('Contact! Release the winch to lift aboard.',3)}else if(cargo&&cargo.status==='waiting'&&Math.hypot(cargo.x-heli.hookX,cargo.y-34-heli.hookY)<28){cargo.status='attached';heli.ropeTarget={kind:'cargo',ref:cargo};AudioState.sfx('attach');radio('Generator secured. The load adds weight — hold extra lift.',5)}}
- if(heli.ropeTarget){const t=heli.ropeTarget.ref;t.x=heli.hookX;t.y=heli.hookY+(heli.ropeTarget.kind==='cargo'?35:24);if(heli.ropeTarget.kind==='person'&&!held&&heli.rope<14){t.status='aboard';heli.carrying++;heli.ropeTarget=null;score+=400;if(precision.hold>=1.2){perfectPickups++;score+=100;popup(heli.x,heli.y-62,'PRECISION RESCUE +500')}else popup(heli.x,heli.y-62,'PASSENGERS +400');AudioState.sfx('rescue');radio('Passenger aboard. '+(people.length-heli.carrying-heli.delivered)+' remaining to rescue.',4)}else if(heli.ropeTarget.kind==='cargo'){heli.rope=Math.max(49,heli.rope);if(held&&Math.abs(heli.z)<14&&Math.abs(t.x-t.to)<100&&Math.abs(heli.vx)<45&&Math.abs(heli.vy)<40&&t.y>=ground(t.to)-27){t.status='delivered';t.x=t.to;t.y=ground(t.to)-15;heli.ropeTarget=null;score+=1000;popup(t.x,t.y-42,'DELIVERED +1 000');radio('Outpost powered. Clean delivery!',5);AudioState.sfx('rescue');}}}
+ if(held&&Math.abs(heli.z)<14&&!heli.ropeTarget&&heli.rope>20&&Math.abs(heli.vx)<72&&Math.abs(heli.vy)<72){const p=people.find(p=>p.status==='waiting'&&Math.hypot(p.x-heli.hookX,p.y-20-heli.hookY)<25);if(p){p.status='attached';heli.ropeTarget={kind:'person',ref:p};AudioState.sfx('latch',p.x);radio('Contact! Release the winch to lift aboard.',3)}else if(cargo&&cargo.status==='waiting'&&Math.hypot(cargo.x-heli.hookX,cargo.y-34-heli.hookY)<28){cargo.status='attached';heli.ropeTarget={kind:'cargo',ref:cargo};AudioState.sfx('latch',cargo.x);radio('Generator secured. The load adds weight — hold extra lift.',5)}}
+ if(heli.ropeTarget){const t=heli.ropeTarget.ref;t.x=heli.hookX;t.y=heli.hookY+(heli.ropeTarget.kind==='cargo'?35:24);if(heli.ropeTarget.kind==='person'&&!held&&heli.rope<14){t.status='aboard';heli.carrying++;heli.ropeTarget=null;score+=400;if(precision.hold>=1.2){perfectPickups++;score+=100;popup(heli.x,heli.y-62,'PRECISION RESCUE +500')}else popup(heli.x,heli.y-62,'PASSENGERS +400');AudioState.sfx('rescue');radio('Passenger aboard. '+(people.length-heli.carrying-heli.delivered)+' remaining to rescue.',4)}else if(heli.ropeTarget.kind==='cargo'){heli.rope=Math.max(49,heli.rope);if(held&&Math.abs(heli.z)<14&&Math.abs(t.x-t.to)<100&&Math.abs(heli.vx)<45&&Math.abs(heli.vy)<40&&t.y>=ground(t.to)-27){t.status='delivered';t.x=t.to;t.y=ground(t.to)-15;heli.ropeTarget=null;score+=1000;popup(t.x,t.y-42,'DELIVERED +1 000');radio('Outpost powered. Clean delivery!',5);AudioState.sfx('delivered',t.x);}}}
  // A slow landing also allows boarding. No instant pickup while flying through survivors.
  if(heli.landed&&Math.abs(heli.z)<14&&Math.abs(heli.vx)<15){for(const p of people){if(p.status==='waiting'&&Math.abs(p.x-heli.x)<68){p.x=damp(p.x,heli.x,1.5,dt);if(Math.abs(p.x-heli.x)<16){p.status='aboard';heli.carrying++;score+=400;AudioState.sfx('rescue');radio('Passenger aboard. Lift when ready.',3)}}}}
 }
@@ -374,13 +374,13 @@ function updateBucketWinch(dt){
  const length=keys.KeyE?185:58;h.rope+=clamp(length-h.rope,-76*dt,90*dt);h.rope=clamp(h.rope,0,185);simulateRope(dt,mount);
  h.ropeTarget.ref.x=h.hookX;h.ropeTarget.ref.y=h.hookY+8;
  const lake=ops.lakes.find(l=>{const b=lakeBounds(l);return h.hookX>b.left+4&&h.hookX<b.right-4&&h.hookY+17>=l.y&&h.hookY<ground(h.hookX);});
- if(lake&&!ops.dropping&&Math.abs(h.vx)<65&&Math.abs(h.vy)<65){ops.water=Math.min(100,ops.water+dt*50);if(ops.water>=99&&!ops.fillNotice){ops.fillNotice=true;radio('Bucket full. Raise it and fly to the fire. Use Space or DROP WATER to release.',5);AudioState.sfx('attach');}}
+ if(lake&&!ops.dropping&&Math.abs(h.vx)<65&&Math.abs(h.vy)<65){ops.water=Math.min(100,ops.water+dt*50);if(ops.water>=99&&!ops.fillNotice){ops.fillNotice=true;radio('Bucket full. Raise it and fly to the fire. Use Space or DROP WATER to release.',5);AudioState.sfx('fill');}}
  if(ops.water<70)ops.fillNotice=false;
 }
-function toggleWater(){if(!ops?.bucket||ops.water<=0)return;ops.dropping=!ops.dropping;ops.dropClock=0;}
+function toggleWater(){if(!ops?.bucket||ops.water<=0)return;ops.dropping=!ops.dropping;ops.dropClock=0;if(ops.dropping)AudioState.sfx('water');}
 function waterImpact(x,y,amount){
  for(const f of ops.fires){if(f.out||Math.abs(x-f.x)>74||Math.abs(y-f.y)>65)continue;const used=Math.min(amount,f.left);f.left=Math.max(0,f.left-used);ops.hits+=used;
-  if(f.left<=.01){f.out=true;score+=600;AudioState.sfx('rescue');radio('Fire '+(f.id+1)+' extinguished. '+ops.fires.filter(k=>!k.out).length+' remaining.',3);}
+  if(f.left<=.01){f.out=true;score+=600;AudioState.sfx('steam',f.x);radio('Fire '+(f.id+1)+' extinguished. '+ops.fires.filter(k=>!k.out).length+' remaining.',3);}
  }
 }
 function updateOperation(dt){
@@ -504,10 +504,10 @@ function drawBucket(){
 function ready(){return (!ops||ops.fires.every(f=>f.out))&&people.every(p=>p.status==='delivered')&&(!L.clear||enemies.every(e=>e.hp<=0))&&(!cargo||cargo.status==='delivered')&&(!boss||boss.hp<=0)}
 function updateBase(dt){if(heli.landed&&Math.abs(heli.z)<14&&heli.x<610&&Math.abs(heli.vx)<20){service+=dt;repairDents(dt*.11);heli.hp=Math.min(100,heli.hp+dt*11);heli.fuel=Math.min(100,heli.fuel+dt*17);if(service>1){heli.rockets=8;heli.flares=4;heli.heat=Math.max(0,heli.heat-dt*2);}if(heli.carrying>0){unload+=dt;if(unload>1.2){const n=heli.carrying;heli.delivered+=n;heli.carrying=0;people.forEach(p=>{if(p.status==='aboard')p.status='delivered'});score+=n*200;popup(heli.x,heli.y-60,'HOME +'+n*200);AudioState.sfx('rescue');radio('Crew safe. Welcome home.',4)}}if(!school.active&&ready()&&service>1.5){if(L.lost)completeLost();else finishMission();};}else{service=0;unload=0;}}
 function updateWeapons(dt){if(!L.combat||mode!=='playing')return;heli.heat=Math.max(0,heli.heat-dt*.19);if(heli.overheated&&heli.heat<.3)heli.overheated=false;const g=weapon();
- if(keys.Space&&gunCd<=0&&!heli.overheated&&heli.turn<.08){gunCd=.095;heli.heat=Math.min(1,heli.heat+.025);bullets.push({x:g.x,y:g.y,px:g.x,py:g.y,vx:g.dx*930,vy:g.dy*930,life:1.25,enemy:false,z:heli.z,vz:0});heli.vx-=g.dx*.43;heli.vy-=g.dy*.43;muzzle=.07;shake=Math.max(shake,.6);AudioState.sfx('gun');if(heli.heat>=1){heli.overheated=true;radio('Cannon cooling. Short bursts keep the heat down.',3)}}
+ if(keys.Space&&gunCd<=0&&!heli.overheated&&heli.turn<.08){gunCd=.095;heli.heat=Math.min(1,heli.heat+.025);bullets.push({x:g.x,y:g.y,px:g.x,py:g.y,vx:g.dx*930,vy:g.dy*930,life:1.25,enemy:false,z:heli.z,vz:0});heli.vx-=g.dx*.43;heli.vy-=g.dy*.43;muzzle=.07;shake=Math.max(shake,.6);AudioState.sfx('gun');if(heli.heat>=1){heli.overheated=true;AudioState.sfx('overheat');radio('Cannon cooling. Short bursts keep the heat down.',3)}}
  if(edges.KeyR&&rocketCd<=0&&heli.rockets>=1&&heli.turn<.08){rocketCd=.65;heli.rockets--;rockets.push({x:g.x,y:g.y+3,px:g.x,py:g.y+3,dx:g.dx,dy:g.dy,speed:260,z:heli.z,life:3.3,trail:0});heli.vx-=g.dx*6;heli.vy-=g.dy*6;heli.av-=heli.dir*.02;shake=Math.max(shake,2);AudioState.sfx('rocket');}
  if(edges.KeyF&&flareCd<=0&&heli.flares>=1){flareCd=2.7;heli.flares--;for(let i=0;i<7;i++){decoys.push({x:heli.x,y:heli.y+10,vx:heli.vx*.4+rand(-100,100),vy:rand(30,100),z:heli.z,life:3.1});}AudioState.sfx('flare');radio('Flares deployed.',2);}}
-function updateEnemies(dt){for(const e of enemies){if(e.hp<=0||e.training)continue;if(e.type==='drone'){e.x=e.homeX+Math.sin(time*.5+e.homeX)*95;e.y=ground(e.x)-210+Math.sin(time*1.2)*28;}e.cd-=dt;e.flash=Math.max(0,e.flash-dt);const dx=heli.x-e.x,dy=heli.y-e.y;e.aim=Math.atan2(dy,dx);const distance=Math.hypot(dx,dy);e.warn=e.cd<.6&&distance<760?1:0;if(e.cd<=0&&distance<760&&heli.x>680&&!blocked(e.x,e.y-25,heli.x,heli.y)){if(e.type==='missile'){missiles.push({x:e.x,y:e.y-32,px:e.x,py:e.y-32,vx:0,vy:-100,life:7,trail:0,decoy:null});e.cd=5.5;radio('Missile incoming. Use flares or break away.',3);}else{const speed=235;const lead=.35;const a=Math.atan2(dy+heli.vy*lead,dx+heli.vx*lead);bullets.push({x:e.x,y:e.y-22,px:e.x,py:e.y-22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:4,enemy:true});e.cd=1.8+Math.random()*.5;e.flash=.12;}}}
+function updateEnemies(dt){for(const e of enemies){if(e.hp<=0||e.training)continue;if(e.type==='drone'){e.x=e.homeX+Math.sin(time*.5+e.homeX)*95;e.y=ground(e.x)-210+Math.sin(time*1.2)*28;}e.cd-=dt;e.flash=Math.max(0,e.flash-dt);const dx=heli.x-e.x,dy=heli.y-e.y;e.aim=Math.atan2(dy,dx);const distance=Math.hypot(dx,dy);e.warn=e.cd<.6&&distance<760?1:0;if(e.cd<=0&&distance<760&&heli.x>680&&!blocked(e.x,e.y-25,heli.x,heli.y)){if(e.type==='missile'){missiles.push({x:e.x,y:e.y-32,px:e.x,py:e.y-32,vx:0,vy:-100,life:7,trail:0,decoy:null});e.cd=5.5;AudioState.sfx('rocket',e.x);AudioState.sfx('alarm');radio('Missile incoming. Use flares or break away.',3);}else{const speed=235;const lead=.35;const a=Math.atan2(dy+heli.vy*lead,dx+heli.vx*lead);bullets.push({x:e.x,y:e.y-22,px:e.x,py:e.y-22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:4,enemy:true});AudioState.sfx('enemyGun',e.x);e.cd=1.8+Math.random()*.5;e.flash=.12;}}}
  if(boss&&boss.hp>0){const b=boss;b.active=Math.abs(heli.x-b.x)<1150;if(b.active){b.t+=dt;b.x=damp(b.x,clamp(heli.x+heli.dir*420,L.length-2300,L.length-350),.42,dt);b.y=damp(b.y,clamp(heli.y-55+Math.sin(b.t*.8)*100,130,430),.5,dt);const clearRoof=obstacles.filter(o=>b.x>o.x-100&&b.x<o.x+o.w+100).reduce((y,o)=>Math.min(y,o.y-85),ground(b.x)-110);b.y=Math.min(b.y,clearRoof);b.cd-=dt;b.missileCd-=dt;b.flash=Math.max(0,b.flash-dt);if(b.cd<=0){b.cd=b.hp<b.max*.4?1.2:1.9;let a=Math.atan2(heli.y-b.y,heli.x-b.x);for(let i=-1;i<=1;i++)bullets.push({x:b.x,y:b.y+12,px:b.x,py:b.y+12,vx:Math.cos(a+i*.13)*260,vy:Math.sin(a+i*.13)*260,life:4,enemy:true});b.flash=.14;}if(b.missileCd<=0){b.missileCd=7;missiles.push({x:b.x,y:b.y+25,px:b.x,py:b.y+25,vx:0,vy:70,life:7,trail:0,decoy:null});}}}}
 function updateProjectiles(dt){for(const b of bullets){if(b.life<=0)continue;if(b.z===undefined){b.z=0;b.vz=b.enemy?(heli.z/Math.max(.1,Math.hypot(heli.x-b.x,heli.y-b.y)/Math.hypot(b.vx,b.vy))):0;}b.z+=(b.vz||0)*dt;b.px=b.x;b.py=b.y;b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(blocked(b.px,b.py,b.x,b.y)){b.life=0;continue;}if(b.enemy){if(Math.abs(b.z-heli.z)<20&&segmentDist(b.px,b.py,b.x,b.y,heli.x,heli.y)<25){b.life=0;hitHeli(7)}}else{for(const e of enemies){if(e.hp>0&&Math.abs(b.z)<20&&segmentDist(b.px,b.py,b.x,b.y,e.x,e.y)<28){if(e.trainingWeapon!=='rocket')damageEnemy(e,7);else if(warningTimer<0){radio('The armoured target needs a rocket. Press R / ROCKET.',3);warningTimer=4;}b.life=0;break}}if(b.life>0&&boss&&boss.hp>0&&Math.abs(b.z)<28&&segmentDist(b.px,b.py,b.x,b.y,boss.x,boss.y)<57){boss.hp=Math.max(0,boss.hp-4);boss.flash=.07;b.life=0;if(boss.hp<=0)killBoss();}}
  if(b.life>0&&b.y>ground(b.x)){b.life=0;for(let j=0;j<2;j++)addParticle(b.x,ground(b.x)-2,rand(-25,25),rand(-45,-10),'#a59679',2,.25)} }
@@ -1108,7 +1108,7 @@ function render(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#06151f';ctx.
 // A missing file is not an error. Until the mp3s are added the game simply runs silent, and any
 // track that fails to load falls back down MUSIC_FALLBACK to one that exists.
 const MUSIC_DIR='music/';
-const MUSIC_FALLBACK={title:null,valley:null,beacon:'valley',shaft:'valley',school:'title',
+const MUSIC_FALLBACK={title:null,valley:'title',beacon:'valley',shaft:'valley',school:'title',
  jungle:'valley',debrief:'title'};
 const Music={
  tracks:{},failed:{},cur:null,prev:null,gain:0,prevGain:0,unlocked:false,
@@ -1187,15 +1187,310 @@ function musicForState(){
  return 'valley';
 }
 
-const AudioState={ac:null,master:null,rotor:null,rotorGain:null,music:null,nextNote:0,note:0,noise:null,
- init(){Music.unlock();if(this.ac){this.ac.resume().catch(()=>{});return;}const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)return;try{this.ac=new Constructor();const a=this.ac;this.master=a.createGain();this.master.gain.value=0;this.master.connect(a.destination);this.music=a.createGain();this.music.gain.value=.65;this.music.connect(this.master);this.rotorGain=a.createGain();this.rotorGain.gain.value=.045;this.rotor=a.createOscillator();this.rotor.type='sawtooth';this.rotor.frequency.value=44;const low=a.createBiquadFilter();low.type='lowpass';low.frequency.value=175;this.rotor.connect(low);low.connect(this.rotorGain);this.rotorGain.connect(this.master);this.rotor.start();const lfo=a.createOscillator(),depth=a.createGain();lfo.frequency.value=17;depth.gain.value=.02;lfo.connect(depth);depth.connect(this.rotorGain.gain);lfo.start();this.noise=a.createBuffer(1,a.sampleRate*.7,a.sampleRate);const data=this.noise.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;this.nextNote=a.currentTime+.25;a.resume().catch(()=>{});this.sync();}catch{this.ac=null;}}
- ,sync(){Music.sync();if(!this.ac)return;const running=mode==='playing';this.master.gain.setTargetAtTime(save.muted||!running?0:.42,this.ac.currentTime,.16);if(running)this.nextNote=Math.max(this.ac.currentTime+.08,this.nextNote);}
- ,tone(freq,duration,volume,type='sine',endFreq=0,delay=0,output=null){if(!this.ac)return;const a=this.ac,t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(endFreq)o.frequency.exponentialRampToValueAtTime(Math.max(12,endFreq),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.015);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(output||this.master);o.start(t);o.stop(t+duration+.02);o.onended=()=>{o.disconnect();g.disconnect()};}
- ,noiseHit(duration,volume,cutoff){if(!this.ac||!this.noise)return;const a=this.ac,t=a.currentTime,b=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();b.buffer=this.noise;f.type='lowpass';f.frequency.value=cutoff;g.gain.setValueAtTime(volume,t);g.gain.exponentialRampToValueAtTime(.001,t+duration);b.connect(f);f.connect(g);g.connect(this.master);b.start();b.stop(t+duration+.01);b.onended=()=>{b.disconnect();f.disconnect();g.disconnect()};}
- ,sfx(type){if(!this.ac||save.muted)return;if(type==='gun'){this.noiseHit(.065,.10,1450);this.tone(130,.07,.07,'triangle',48)}if(type==='rocket'){this.noiseHit(.35,.22,780);this.tone(170,.32,.12,'sawtooth',36)}if(type==='boom'){this.noiseHit(.65,.46,700);this.tone(82,.58,.24,'sine',22)}if(type==='hit'){this.noiseHit(.12,.11,2100)}if(type==='attach'){this.tone(560,.12,.08,'sine');this.tone(750,.16,.06,'sine',0,.1)}if(type==='rescue'){[440,554.37,659.25].forEach((f,i)=>this.tone(f,.34,.09,'sine',0,i*.09))}if(type==='flare')this.noiseHit(.25,.16,1900);if(type==='switch')this.tone(310,.09,.04,'triangle',240);}
- ,update(dt){if(!this.ac)return;this.rotor.frequency.setTargetAtTime(34+heli.spool*28,this.ac.currentTime,.1);this.rotorGain.gain.setTargetAtTime(.025+heli.spool*.055,this.ac.currentTime,.1);if(save.muted)return;const now=this.ac.currentTime;if(now>this.nextNote){const notes=[220,0,261.63,329.63,293.66,0,196,261.63,174.61,220,261.63,0,196,246.94,293.66,0];const n=this.note++%notes.length;this.nextNote=now+.65;if(notes[n])this.tone(notes[n],1.35,.023,'triangle',0,0,this.music);if(n%4===0){const bass=[55,65.41,43.65,49][Math.floor(n/4)];this.tone(bass,2.5,.05,'sine',0,0,this.music);this.tone(bass*3,2.1,.013,'sine',0,.02,this.music)}if(n%2===0)this.tone(75,.2,.032,'sine',32,0,this.music);}}
+// --- Sound -----------------------------------------------------------------------------------
+// Every sound is synthesised; there are no audio files except the music Marcus supplies. The
+// rule the whole set is built on: you should be able to tell what happened with your eyes shut.
+// Two sounds that mean different things are never allowed to share a shape, so each one is
+// deliberately placed in its own corner of three axes — how bright it is, how fast it starts,
+// and how long it rings.
+//
+//   gun        bright, instant, gone          rocket    dark, swelling, long
+//   hit        thin metal, instant            strike    bright shriek, ringing
+//   latch      two dry clicks                 rescue    warm bell, rising
+//   fill       bubbles, slow                  water     broadband whoosh, falling
+//   steam      hiss, no pitch at all          boom      sub-bass, everything at once
+//
+// World sounds are panned and attenuated by where they happen on screen, so a sentry firing
+// from off to the right announces itself before you see it.
+const AudioState={
+ ac:null,master:null,bus:null,noise:null,grain:null,
+ rotor:null,rotorHi:null,rotorGain:null,slapDepth:null,slapOsc:null,
+ wind:null,windGain:null,windFilter:null,
+ winchSrc:null,winchGain:null,winchFilter:null,
+ voices:0,warn:{fuel:0,hull:0,heat:0,lock:0},ropeWas:0,fellFrom:0,
+ init(){
+  Music.unlock();
+  if(this.ac){this.ac.resume().catch(()=>{});return;}
+  const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)return;
+  try{
+   this.ac=new Constructor();const a=this.ac;
+   this.master=a.createGain();this.master.gain.value=0;this.master.connect(a.destination);
+   // Everything except the rotor bed goes through one compressor. Without it a burst of cannon
+   // fire over an explosion clips, and clipping is the one thing that makes a synthesised set
+   // sound cheap no matter how good the individual sounds are.
+   this.bus=a.createDynamicsCompressor();
+   this.bus.threshold.value=-16;this.bus.knee.value=22;this.bus.ratio.value=7;
+   this.bus.attack.value=.004;this.bus.release.value=.16;
+   this.bus.connect(this.master);
+   // Two noise buffers: white for transients, and a slower-moving one for wind and water.
+   this.noise=a.createBuffer(1,a.sampleRate*1.4,a.sampleRate);
+   const w=this.noise.getChannelData(0);for(let i=0;i<w.length;i++)w[i]=Math.random()*2-1;
+   this.grain=a.createBuffer(1,a.sampleRate*2.6,a.sampleRate);
+   const g=this.grain.getChannelData(0);let run=0;
+   for(let i=0;i<g.length;i++){run=run*.86+(Math.random()*2-1)*.14;g[i]=clamp(run*4,-1,1);}
+   this.buildBeds();
+   a.resume().catch(()=>{});this.sync();
+  }catch{this.ac=null;}
+ }
+ // The three sounds that never stop while you fly: rotor, airflow and the winch motor. They are
+ // built once and then only have their gain and pitch moved, because restarting a drone every
+ // frame is what makes browser audio crackle.
+ ,buildBeds(){
+  const a=this.ac;
+  this.rotorGain=a.createGain();this.rotorGain.gain.value=.03;this.rotorGain.connect(this.master);
+  this.rotor=a.createOscillator();this.rotor.type='sawtooth';this.rotor.frequency.value=44;
+  this.rotorHi=a.createOscillator();this.rotorHi.type='triangle';this.rotorHi.frequency.value=132;
+  const low=a.createBiquadFilter();low.type='lowpass';low.frequency.value=190;low.Q.value=3;
+  const hiGain=a.createGain();hiGain.gain.value=.28;
+  this.rotor.connect(low);low.connect(this.rotorGain);
+  this.rotorHi.connect(hiGain);hiGain.connect(this.rotorGain);
+  this.rotor.start();this.rotorHi.start();
+  // Blade slap: the rotor is not a drone, it is five blades passing overhead per revolution.
+  this.slapOsc=a.createOscillator();this.slapOsc.type='sine';this.slapOsc.frequency.value=17;
+  this.slapDepth=a.createGain();this.slapDepth.gain.value=.014;
+  this.slapOsc.connect(this.slapDepth);this.slapDepth.connect(this.rotorGain.gain);this.slapOsc.start();
+  // Airflow over the airframe, opening up with speed.
+  this.wind=a.createBufferSource();this.wind.buffer=this.grain;this.wind.loop=true;
+  this.windFilter=a.createBiquadFilter();this.windFilter.type='bandpass';
+  this.windFilter.frequency.value=520;this.windFilter.Q.value=.7;
+  this.windGain=a.createGain();this.windGain.gain.value=0;
+  this.wind.connect(this.windFilter);this.windFilter.connect(this.windGain);
+  this.windGain.connect(this.master);this.wind.start();
+  // Winch motor, silent until the rope actually moves.
+  this.winchSrc=a.createOscillator();this.winchSrc.type='square';this.winchSrc.frequency.value=58;
+  this.winchFilter=a.createBiquadFilter();this.winchFilter.type='lowpass';
+  this.winchFilter.frequency.value=760;this.winchFilter.Q.value=6;
+  this.winchGain=a.createGain();this.winchGain.gain.value=0;
+  this.winchSrc.connect(this.winchFilter);this.winchFilter.connect(this.winchGain);
+  this.winchGain.connect(this.bus);this.winchSrc.start();
+ }
+ // The master stays open outside a flight as well. It used to close in every menu, which also
+ // silenced the crash you are watching in the wreck state and every interface click; what does
+ // not belong in a menu is the rotor bed, and that is switched off at the bed instead.
+ ,sync(){
+  Music.sync();if(!this.ac)return;
+  this.master.gain.setTargetAtTime(save.muted?0:.42,this.ac.currentTime,.16);
+ }
+ // Where a sound sits in the stereo field, and how loud it is from here. Anything without a
+ // position (interface, warnings, your own aircraft) plays dead centre at full level.
+ ,place(x){
+  if(x===undefined||!isFinite(x))return{g:1,p:0};
+  const half=Math.max(1,vw*.5),d=(x-(camera+half))/half;
+  return{g:clamp(1.2-Math.abs(d)*.5,.1,1),p:clamp(d,-1.4,1.4)*.72};
+ }
+ // One scheduled sound's own output node. The voice cap is not about CPU — it is that twenty
+ // overlapping decays sum into mush, and the last shot fired is the one you need to hear.
+ ,dest(at,vol){
+  const a=this.ac,g=a.createGain(),s=this.place(at);
+  g.gain.value=(vol??1)*s.g;
+  if(a.createStereoPanner){const p=a.createStereoPanner();p.pan.value=s.p;g.connect(p);p.connect(this.bus);}
+  else g.connect(this.bus);
+  return g;
+ }
+ ,tone(freq,duration,volume,type='sine',endFreq=0,delay=0,output=null,attack=.008){
+  if(!this.ac||this.voices>26)return;
+  const a=this.ac,t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,t);
+  if(endFreq)o.frequency.exponentialRampToValueAtTime(Math.max(12,endFreq),t+duration);
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.exponentialRampToValueAtTime(Math.max(.0002,volume),t+attack);
+  g.gain.exponentialRampToValueAtTime(.0001,t+duration);
+  o.connect(g);g.connect(output||this.bus);
+  this.voices++;o.start(t);o.stop(t+duration+.02);
+  o.onended=()=>{this.voices--;o.disconnect();g.disconnect()};
+ }
+ // Filtered noise, optionally sweeping its filter across the sound. The sweep is what separates
+ // a rocket from an explosion: same material, opposite direction.
+ ,hiss(duration,volume,cutoff,{type='lowpass',end=0,q=1,delay=0,out=null,buffer='noise',attack=.004}={}){
+  if(!this.ac||this.voices>26)return;
+  const a=this.ac,t=a.currentTime+delay,b=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();
+  b.buffer=this[buffer];b.playbackRate.value=.85+Math.random()*.3;
+  if(duration>b.buffer.duration)b.loop=true;
+  f.type=type;f.Q.value=q;f.frequency.setValueAtTime(cutoff,t);
+  if(end)f.frequency.exponentialRampToValueAtTime(Math.max(30,end),t+duration);
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.exponentialRampToValueAtTime(Math.max(.0002,volume),t+attack);
+  g.gain.exponentialRampToValueAtTime(.0001,t+duration);
+  b.connect(f);f.connect(g);g.connect(out||this.bus);
+  this.voices++;b.start(t);b.stop(t+duration+.02);
+  b.onended=()=>{this.voices--;b.disconnect();f.disconnect();g.disconnect()};
+ }
+ // Kept for the older call sites; the shape is now the generic filtered-noise burst.
+ ,noiseHit(duration,volume,cutoff){this.hiss(duration,volume,cutoff)}
+ ,sfx(type,at,opt){
+  if(!this.ac||save.muted)return;
+  const out=this.dest(at,opt?.vol??1),r=(n)=>1+(Math.random()*2-1)*n;
+  switch(type){
+  // The cannon. Four layers, because a single noise burst reads as a hiss rather than a shot:
+  // a 3 ms crack that gives the ear the transient it needs, a short bandpassed body, a low
+  // thump you feel more than hear, and the action cycling a moment behind. Every shot is
+  // detuned a few per cent so a held burst breathes instead of stuttering one sample.
+  case 'gun':{
+   const p=r(.06);
+   this.hiss(.028,.34,4200*p,{type:'highpass',q:.6,out,attack:.001});
+   this.hiss(.075,.30,1150*p,{type:'bandpass',q:1.4,end:520,out});
+   this.tone(128*p,.085,.16,'triangle',44,0,out,.002);
+   this.hiss(.05,.05,3000,{type:'bandpass',q:3,delay:.045,out});
+   this.hiss(.32,.045,420,{type:'lowpass',delay:.03,out});
+   break;}
+  // Their fire, heard from wherever they are: no crack, everything under a lid. Distance does
+  // the rest, so you can tell incoming from outgoing without looking.
+  case 'enemyGun':
+   this.hiss(.11,.26,620*r(.1),{type:'lowpass',q:2,end:260,out});
+   this.tone(96*r(.08),.13,.10,'square',38,0,out,.004);
+   this.hiss(.42,.05,300,{type:'lowpass',delay:.05,out});
+   break;
+  // Launch: quiet at the start, loudest halfway out. The filter opens upward, which is the
+  // opposite of every impact sound in the set.
+  case 'rocket':
+   this.hiss(.55,.24,300,{type:'bandpass',q:.8,end:2600,out,attack:.05});
+   this.tone(190,.5,.12,'sawtooth',52,0,out,.03);
+   this.tone(74,.22,.10,'sine',30,0,out,.004);
+   break;
+  case 'boom':
+   this.tone(78,.9,.30,'sine',18,0,out,.004);
+   this.hiss(.7,.42,520,{type:'lowpass',end:120,out,attack:.002});
+   this.hiss(.16,.2,1800,{type:'bandpass',q:.8,out,attack:.001});
+   for(let i=0;i<4;i++)this.hiss(.06,.06,900*r(.5),{type:'bandpass',q:4,delay:.18+i*.11,out});
+   break;
+  // Taking a hit: thin, metallic, over instantly. Two detuned squares give it the sourness
+  // that separates "that hurt" from "that exploded".
+  case 'hit':
+   this.tone(426,.11,.13,'square',300,0,out,.001);
+   this.tone(631,.09,.09,'square',470,0,out,.001);
+   this.hiss(.09,.16,2400,{type:'bandpass',q:1.2,out,attack:.001});
+   break;
+  // Blades into rock. The one sound in the game that shrieks, and it should make you flinch.
+  case 'strike':
+   this.tone(1750,.24,.15,'sawtooth',380,0,out,.002);
+   this.hiss(.2,.26,3100,{type:'bandpass',q:1.6,end:900,out,attack:.001});
+   for(let i=0;i<5;i++)this.hiss(.05,.11,1500*r(.4),{type:'bandpass',q:6,delay:i*.045,out});
+   this.tone(66,.3,.12,'sine',26,0,out,.003);
+   break;
+  // Skids down. Soft is a thump you barely notice; hard adds the crunch and a ring that tells
+  // you the airframe took it.
+  case 'touch':
+   this.tone(94,.14,.15,'sine',46,0,out,.003);
+   this.hiss(.11,.13,700,{type:'lowpass',out});
+   break;
+  case 'touchHard':
+   this.tone(78,.22,.24,'sine',34,0,out,.002);
+   this.hiss(.19,.24,1300,{type:'lowpass',end:300,out,attack:.001});
+   this.tone(520,.16,.06,'square',360,.02,out,.002);
+   break;
+  // The hook. Two dry clicks, no pitch to speak of — it must not be confused with a reward.
+  case 'latch':
+   this.hiss(.045,.9,2600,{type:'bandpass',q:2,out,attack:.001});
+   this.hiss(.05,.72,1500,{type:'bandpass',q:2,delay:.07,out,attack:.001});
+   break;
+  // Somebody is aboard. Warm, rising, and the only place a major chord appears.
+  case 'rescue':
+   [523.25,659.25,783.99].forEach((f,i)=>this.tone(f,.42,.14,'sine',0,i*.075,out,.01));
+   this.tone(261.63,.6,.05,'triangle',0,.02,out,.02);
+   break;
+  // The load is down. Weight first, confirmation second, so it lands before it congratulates.
+  case 'delivered':
+   this.tone(70,.28,.22,'sine',30,0,out,.002);
+   this.hiss(.22,.16,900,{type:'lowpass',end:220,out,attack:.001});
+   this.tone(392,.3,.08,'sine',0,.14,out,.01);
+   this.tone(587.33,.34,.07,'sine',0,.24,out,.01);
+   break;
+  // Filling: irregular bubbles rather than a tone, so it reads as a volume rising, not a timer.
+  case 'fill':
+   for(let i=0;i<7;i++)this.tone(280+Math.random()*520,.07,.13,'sine',180,i*.055,out,.006);
+   this.hiss(.44,.24,700,{type:'lowpass',q:1.5,end:340,out,attack:.06});
+   break;
+  // Release: broadband and falling, the mirror of the rocket's rise.
+  case 'water':
+   this.hiss(.75,.3,2600,{type:'lowpass',end:380,out,attack:.03});
+   this.hiss(.5,.12,180,{type:'lowpass',delay:.1,out,attack:.08});
+   break;
+  // Fire out. Pure hiss with no pitch anywhere in it, plus one falling whistle so it resolves.
+  case 'steam':
+   this.hiss(1.15,.34,3400,{type:'highpass',end:900,out,attack:.05,buffer:'grain'});
+   this.hiss(.9,.12,1500,{type:'bandpass',q:2,end:400,out,attack:.1});
+   this.tone(880,.7,.04,'sine',210,.15,out,.06);
+   break;
+  case 'flare':
+   for(let i=0;i<3;i++){
+    this.hiss(.13,.16,2600*r(.2),{type:'bandpass',q:1.4,end:900,delay:i*.06,out,attack:.001});
+    this.tone(720-i*130,.18,.05,'triangle',240,i*.06,out,.004);
+   }break;
+  // Warnings. Deliberately musical intervals nothing else in the game uses, so they cut through
+  // a firefight without being loud.
+  case 'alarm':
+   for(let i=0;i<2;i++){this.tone(932,.1,.11,'square',0,i*.19,out,.004);this.tone(699,.1,.09,'square',0,i*.19+.09,out,.004);}
+   break;
+  case 'lock':this.tone(1245,.075,.16,'square',0,0,out,.003);break;
+  case 'fuelWarn':[0,.28].forEach(d=>this.tone(740,.13,.17,'triangle',0,d,out,.006));break;
+  case 'hullWarn':[0,.15,.3].forEach(d=>this.tone(494,.11,.16,'sawtooth',466,d,out,.004));break;
+  case 'overheat':
+   for(let i=0;i<3;i++)this.hiss(.05,.55,1100,{type:'bandpass',q:2.5,delay:i*.075,out,attack:.001});
+   this.tone(180,.2,.07,'square',110,.16,out,.004);
+   break;
+  // Progress. A rising fifth for a checkpoint; a fast bright sparkle for something collected.
+  case 'checkpoint':
+   this.tone(392,.5,.14,'sine',0,0,out,.012);
+   this.tone(587.33,.55,.13,'sine',0,.13,out,.012);
+   this.tone(196,.7,.05,'triangle',0,0,out,.03);
+   break;
+  case 'star':
+   [1046.5,1318.5,1568,2093].forEach((f,i)=>this.tone(f,.24,.13,'sine',0,i*.045,out,.004));
+   break;
+  // Turning the aircraft: air moving, not a menu beep.
+  case 'switch':
+   this.hiss(.28,.34,400,{type:'bandpass',q:1.1,end:1900,out,attack:.05});
+   break;
+  case 'ui':this.hiss(.04,.6,2000,{type:'bandpass',q:1.6,out,attack:.001});break;
+  // The wreck. Everything at once, then metal tearing for a second and a half after.
+  case 'wreck':
+   this.tone(64,1.4,.34,'sine',14,0,out,.003);
+   this.hiss(1.1,.4,700,{type:'lowpass',end:110,out,attack:.002});
+   this.tone(340,.9,.10,'sawtooth',70,.05,out,.01);
+   for(let i=0;i<9;i++)this.hiss(.09,.13,1200*r(.6),{type:'bandpass',q:5,delay:.25+i*.12,out,attack:.001});
+   break;
+  }
+ }
+ // Warnings repeat on their own clock rather than on the frame that crosses the threshold, or a
+ // fuel state sitting exactly on the line beeps sixty times a second.
+ ,warnings(dt){
+  const w=this.warn;
+  for(const k in w)w[k]=Math.max(0,w[k]-dt);
+  if(heli.fuel<18&&!heli.landed&&w.fuel<=0){this.sfx('fuelWarn');w.fuel=heli.fuel<9?2.1:3.6;}
+  if(heli.hp<28&&w.hull<=0){this.sfx('hullWarn');w.hull=heli.hp<14?1.7:2.9;}
+  if(heli.overheated&&w.heat<=0){this.sfx('overheat');w.heat=1.6;}
+  if(w.lock<=0&&enemies.some(e=>e.warn>0&&e.hp>0)){
+   const e=enemies.find(v=>v.warn>0&&v.hp>0);this.sfx('lock',e.x);w.lock=.55;
+  }
+ }
+ ,update(dt){
+  if(!this.ac)return;
+  const a=this.ac,t=a.currentTime;
+  // The rotor bed. Pitch follows spool; the blade slap deepens with collective and with bank,
+  // which is what makes a hard pull feel like work rather than a volume change.
+  const spool=heli.spool||0,near=mode==='playing'||mode==='wreck',bed=near?1:mode==='menu'?.45:0;
+  this.rotor.frequency.setTargetAtTime(32+spool*30,t,.1);
+  this.rotorHi.frequency.setTargetAtTime(96+spool*92,t,.1);
+  this.rotorGain.gain.setTargetAtTime(save.muted?0:(.022+spool*.05)*bed,t,.12);
+  this.slapOsc.frequency.setTargetAtTime(11+spool*13,t,.15);
+  this.slapDepth.gain.setTargetAtTime(.008+(heli.collective||0)/700*.02+Math.abs(heli.bank||0)*.02,t,.15);
+  // Airflow. Silent on the pad, loud in a dive, and it opens up in pitch as well as level so
+  // speed is audible without looking at the instruments.
+  const speed=Math.hypot(heli.vx||0,heli.vy||0),flying=mode==='playing'&&!heli.landed;
+  this.windGain.gain.setTargetAtTime(save.muted||!flying?0:clamp((speed-40)/900,0,1)*.075,t,.18);
+  this.windFilter.frequency.setTargetAtTime(380+clamp(speed,0,900)*1.5,t,.2);
+  // The winch motor runs only while the rope is actually moving, and drops in pitch on the
+  // way back up because it is hauling.
+  const rope=heli.rope||0,delta=rope-this.ropeWas,moving=Math.abs(delta)/Math.max(dt,1e-4);
+  this.ropeWas=rope;
+  const lowering=delta>0;
+  this.winchGain.gain.setTargetAtTime(save.muted||mode!=='playing'?0:clamp(moving/140,0,1)*.06,t,.05);
+  this.winchSrc.frequency.setTargetAtTime(lowering?66:52,t,.08);
+  if(save.muted||mode!=='playing')return;
+  this.warnings(dt);
+ }
 };
-function showModal(tag,title,body,actions){clearInput();$('combatBar').hidden=true;$('dropBtn').hidden=true;$('settingsBtn').disabled=!['menu','playing','paused'].includes(mode);$('modalTag').textContent=tag;$('modalTitle').textContent=title;$('modalBody').innerHTML=body;const wrap=$('modalActions');wrap.replaceChildren();for(const action of actions){const b=document.createElement('button');b.textContent=action.text;b.className=action.primary?'primary':'quiet';b.onclick=action.run;wrap.append(b);}$('modal').hidden=false;$('mobile').hidden=true;AudioState.sync();wrap.querySelector('button')?.focus({preventScroll:true});}
+function showModal(tag,title,body,actions){clearInput();$('combatBar').hidden=true;$('dropBtn').hidden=true;$('settingsBtn').disabled=!['menu','playing','paused'].includes(mode);$('modalTag').textContent=tag;$('modalTitle').textContent=title;$('modalBody').innerHTML=body;const wrap=$('modalActions');wrap.replaceChildren();for(const action of actions){const b=document.createElement('button');b.textContent=action.text;b.className=action.primary?'primary':'quiet';b.onclick=()=>{AudioState.sfx('ui');action.run()};wrap.append(b);}$('modal').hidden=false;$('mobile').hidden=true;AudioState.sync();wrap.querySelector('button')?.focus({preventScroll:true});}
 function dismiss(){clearInput();$('settingsBtn').disabled=false;$('modal').hidden=true;}
 function begin(){dismiss();mode='playing';$('hud').hidden=false;$('mobile').hidden=!coarse;$('pauseBtn').hidden=false;radio(level===0?'SAR–07, cleared for takeoff. Increase lift gently.':L.region+'. Fly safely. Your mission is ready.',5);AudioState.init();AudioState.sync();updateHUD();}
 function briefing(){if(ops){operationBriefing();return;}const extra=level===0?'<p><b>A / D:</b> tilt to fly. Countersteer to brake.<br><b>W / S:</b> increase or decrease lift.<br><b>Countersteer early.</b> The helicopter retains momentum.</p>':cargo?'<p>Tap WINCH to lower the hook, tap again to reel in. On keyboard: hold and release E. Lower the generator onto the outpost delivery pad.</p>':'<p>Stabilize with H before winching. Return to base for fuel, repairs or rockets.</p>';showModal(`${String(level+1).padStart(2,'0')} / ${L.region.toUpperCase()}`,L.name,`<p>${L.brief}</p>${extra}<p class="missionhint">${coarse?'Hold either screen half to tilt; both to climb. Release to descend. Swipe to turn. WINCH toggles lowering and raising.':'Hold E to lower the winch. Release E to reel in. Q turns the nose.'}</p>`,[{text:'START FLIGHT',primary:true,run:begin},{text:'MISSION',run:selectMissions}]);}
@@ -1209,7 +1504,7 @@ function beginWreck(reason,finish){
  if(mode!=='playing')return;
  mode='wreck';clearInput();$('mobile').hidden=true;
  const speed=Math.hypot(heli.vx,heli.vy);
- wreck={t:0,reason,finish,rest:0,bounces:0};
+ wreck={t:0,reason,finish,rest:0,bounces:0};AudioState.sfx('wreck');
  heli.collective=0;heli.rope=0;heli.ropeTarget=null;heli.landed=false;
  // Whatever it was doing, it is now spinning: impact torque scaled by how fast it arrived.
  heli.av+=(heli.vx>0?-1:1)*(1.4+clamp(speed/120,0,2.6))*(.6+Math.random());
@@ -1336,7 +1631,7 @@ function updateStars(){
  for(const st of stars){
   if(st.taken)continue;
   if(Math.hypot(st.x-heli.x,st.y-heli.y)<48){
-   st.taken=true;AudioState.sfx('rescue');
+   st.taken=true;AudioState.sfx('star',st.x);
    const left=stars.filter(v=>!v.taken).length;
    radio(left?'Crate secured. '+left+' left in the shafts.':'All crates aboard. Continue to the beacon.',4);
   }
@@ -1351,7 +1646,7 @@ function updateLost(dt){if(!L.lost||!lost.active)return;updateStars();lost.total
     'Nice. That looked almost intentional.','Checkpoint. Breathe. Then keep going.',
     'You are officially better than the last pilot.','Saved. Nobody needs to know how it happened.',
     'Good landing. The valley is still longer than you think.'];
-   radio(praise[pad%praise.length],5);AudioState.sfx('rescue');}if(lost.returning&&pad>0&&!lost.returnService.has(pad)){lost.returnService.add(pad);heli.hp=Math.min(100,heli.hp+20);repairDents(.3);heli.fuel=100;radio('Quick service. The journey home remains.',3);}}
+   radio(praise[pad%praise.length],5);AudioState.sfx('checkpoint');}if(lost.returning&&pad>0&&!lost.returnService.has(pad)){lost.returnService.add(pad);heli.hp=Math.min(100,heli.hp+20);repairDents(.3);heli.fuel=100;radio('Quick service. The journey home remains.',3);}}
  if(lost.lastSave>4){saveLost();lost.lastSave=0;}
  $('lostStatus').hidden=false;const progress=Math.round(lost.best/L.beacon*100);$('lostStatus').textContent=(lost.returning?'← HOME TO EAGLE BASE':'→ RESCUE BEACON')+' · '+lostPads[lost.cp].name+' · BEST '+progress+' % · '+lost.crashes+' CRASHES';$('tip').textContent=heli.x>3350&&heli.x<4350?(heli.y>510?'MINE · STAY CENTRED · WATCH THE CEILING AND WALLS':'SAFE ROUTE · FLY OVER THE MOUNTAIN'):lostWind().label+' · LEARN THE RHYTHM · LAND AT RELAY PADS';
 }
@@ -1386,7 +1681,7 @@ function updateDrill(dt){let passed=false;if(school.kind==='turn'){const calm=!h
 function drawDrillGuide(){let x=heli.x,y=heli.y-100,text=drillHint();if(school.kind==='rescue'){x=heli.carrying?390:1110;y=ground(x)-85;text=heli.carrying?'LAND AT BASE':'WINCH UP THE RESEARCHER';}if(school.kind==='cargo'){x=cargo?.status==='attached'?1740:1040;y=ground(x)-85;text=cargo?.status==='attached'?'LOWER THE CRATE':'PICK UP THE CRATE';}if(['gun','rocket'].includes(school.kind)){for(const e of enemies)if(e.hp>0){ctx.strokeStyle='#edcb8f';ctx.lineWidth=2;ctx.beginPath();ctx.arc(e.x,e.y,40,0,TAU);ctx.stroke();label('PRACTICE TARGETS · '+(school.kind==='gun'?'CANNON':'ROCKET'),e.x,e.y-78,'#f5dda6',11);}return;}label(text,x,y,'#cbf1d8',12);}
 function startTraining(){loadLevel(0);school={active:true,kind:'basic',stage:0,hold:0};$('modalBody').innerHTML='<p>Three short exercises: take off, countersteer and land. Follow the turquoise marker. Flight physics match the missions.</p><p>Both screen halves / W: climb. One half / A or D: tilt. Countersteer to brake. Release both / S: descend. You can leave the exercise at any time.</p>';}
 function updateTraining(dt){$('retrySchool').hidden=!school.active;$('skipSchool').hidden=!school.active;if(school.active&&school.kind&&school.kind!=='basic'){updateDrill(dt);return;}if(!school.active)return;const h=heli;let inside=false;if(school.stage===0)inside=Math.abs(h.x-390)<90&&h.y<490&&!h.landed;else if(school.stage===1)inside=Math.abs(h.x-553)<60&&Math.abs(h.y-455)<48&&Math.abs(h.vx)<22&&Math.abs(h.vy)<20;else inside=school.cleanLanding&&h.landed&&Math.abs(h.x-553)<55&&Math.abs(h.vx)<12&&Math.abs(h.angle)<.15;school.hold=inside?school.hold+dt:Math.max(0,school.hold-dt*2);if(school.hold>=(school.stage===1?2:.7)){school.stage++;school.hold=0;AudioState.sfx('rescue');if(school.stage===3){school.active=false;time=0;$('retrySchool').hidden=true;save.schoolComplete=true;persist();$('skipSchool').hidden=true;radio('Basic flight complete! Find more exercises in FLIGHT SCHOOL, or continue this rescue mission.',7);popup(h.x,h.y-75,'BASIC FLIGHT COMPLETE');}else radio(school.stage===1?'Good takeoff. Fly to the next box and countersteer early to stop.':'Good control. Descend slowly over the landing pad.',5);}}
-function updatePrecision(dt){const h=heli,steady=!h.landed&&Math.abs(h.vx)<22&&Math.abs(h.vy)<18&&Math.abs(h.angle)<.16;precision.hold=steady?Math.min(4,precision.hold+dt):0;if(Math.abs(h.vx)>100)precision.fast=true;const target=people.find(p=>p.status==='waiting'&&Math.abs(p.x-h.x)<85&&p.y-h.y>60&&p.y-h.y<240);if(target&&steady&&precision.fast){precision.approach+=dt;if(precision.approach>=1.5&&!precision.targets.has(target.homeX)){precision.targets.add(target.homeX);score+=100;popup(h.x,h.y-80,'CONTROLLED APPROACH +100');AudioState.sfx('attach');precision.fast=false;}}else precision.approach=0;}
+function updatePrecision(dt){const h=heli,steady=!h.landed&&Math.abs(h.vx)<22&&Math.abs(h.vy)<18&&Math.abs(h.angle)<.16;precision.hold=steady?Math.min(4,precision.hold+dt):0;if(Math.abs(h.vx)>100)precision.fast=true;const target=people.find(p=>p.status==='waiting'&&Math.abs(p.x-h.x)<85&&p.y-h.y>60&&p.y-h.y<240);if(target&&steady&&precision.fast){precision.approach+=dt;if(precision.approach>=1.5&&!precision.targets.has(target.homeX)){precision.targets.add(target.homeX);score+=100;popup(h.x,h.y-80,'CONTROLLED APPROACH +100');AudioState.sfx('checkpoint');precision.fast=false;}}else precision.approach=0;}
 function drawFlightGuides(){if(school.active&&school.kind&&school.kind!=='basic'){drawDrillGuide();}if(school.active&&(!school.kind||school.kind==='basic')){const x=school.stage===0?390:553,y=school.stage===2?ground(x)-31:455,w=school.stage===0?150:110,h=school.stage===2?44:85;ctx.fillStyle='#8ceac810';ctx.fillRect(x-w/2,y-h/2,w,h);ctx.strokeStyle='#a5efcf';ctx.lineWidth=2;ctx.setLineDash([8,6]);ctx.strokeRect(x-w/2,y-h/2,w,h);ctx.setLineDash([]);label(['CLIMB HERE','COUNTERSTEER · HOLD POSITION','LAND HERE'][school.stage],x,y-h/2-15,'#caf5de',12);line(x-w/2,y+h/2+9,x-w/2+w*clamp(school.hold/(school.stage===1?2:.7),0,1),y+h/2+9,'#bdf6d7',4);}if(mode==='playing'&&!heli.landed&&(keys.KeyE||heli.ropeTarget)){const progress=clamp(precision.hold/1.2,0,1);line(heli.x-32,heli.y-80,heli.x+32,heli.y-80,'#183848',4);line(heli.x-32,heli.y-80,heli.x-32+64*progress,heli.y-80,'#b8ead0',4);label(progress===1?'STEADY WINCH':'STABILIZE FOR PRECISION',heli.x,heli.y-90,'#d0eadb',10);}}
 function drawHazardGuides(){let nearest=Infinity;for(const o of obstacles){const dx=heli.x-clamp(heli.x,o.x,o.x+o.w),dy=heli.y-clamp(heli.y,o.y,o.y+o.h),distance=Math.hypot(dx,dy);nearest=Math.min(nearest,distance);if(o.x>camera+vw+100||o.x+o.w<camera-100)continue;if(distance<145){const x=clamp(heli.x,o.x,o.x+o.w),y=clamp(heli.y,o.y,o.y+o.h);glow(x,y,24,'#ffc57935');}}if(nearest<130&&mode==='playing'){label('ROCK CLOSE · WATCH ROTOR',heli.x,heli.y-155,'#ffd198',12);}}
 function updateTutorial(){if(ops){$('tip').textContent=operationHint();return;}if(coarse||touchFlight){$('tip').textContent='ONE SIDE: TILT · BOTH: LIFT · RELEASE: DESCEND · SWIPE: TURN · WINCH: TOGGLE';return;}if(school.active&&school.kind&&school.kind!=='basic'){$('tip').textContent=drillHint();return;}if(school.active){$('tip').textContent=[coarse?'1/3 · HOLD BOTH SCREEN HALVES · CLIMB TO THE BOX':'1/3 · HOLD W · CLIMB TO THE CYAN BOX','2/3 · FLY RIGHT · COUNTERSTEER AND HOLD THE BOX FOR 2 SECONDS','3/3 · REDUCE LIFT · LAND SOFTLY ON THE MARKED PAD'][school.stage];return;}if(L.theme==='jungle'){$('tip').textContent=heli.x>1600&&heli.x<3050?'CAVE PASSAGE · CYAN LIGHTS SHOW THE WAY · H / STABILIZE CAN HELP':'FOLLOW THE RAVINE DOWN · KEEP THE ROTOR CLEAR OF ROCKS';return;}if(level!==0){$('tip').textContent=cargo&&cargo.status==='attached'?'Heavy cargo: add lift. Lower gently over the delivery pad.':'';return;}if(time<12&&heli.x<650)$('tip').textContent=coarse?'Push up to lift. Tilt sideways to build speed.':'Hold W to lift. A / D tilts the helicopter and builds speed.';else if(time<32)$('tip').textContent='Release the controls: momentum carries you on. Countersteer to brake.';else if(people.some(p=>p.status==='waiting'&&Math.abs(p.x-heli.x)<220))$('tip').textContent=coarse?'Hold steady. Toggle WINCH to lower. Toggle again once attached.':'H stabilizes altitude. Hold E to lower the winch, release to reel in.';else if(save.depthMode&&Math.abs(heli.z)>14)$('tip').textContent='Return to mission depth with J / CENTRE to rescue and land at base.';else if(time<70)$('tip').textContent='Countersteer to brake. Q changes direction. Fly gently with cargo.';else $('tip').textContent='';}
