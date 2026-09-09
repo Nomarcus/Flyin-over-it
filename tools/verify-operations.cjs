@@ -17,7 +17,7 @@ function scoop(){const o=a.getOps(),l=o.lakes[0],h=pin(l.x+l.w/2,l.y-155);a.keys
 function extinguish(f){const h=pin(f.x,f.y-210);a.keys.KeyE=false;ropeSeconds(2);a.toggleWater();for(let i=0;i<5*120;i++){a.updateWinch(dt);a.updateOperation(dt);}assert(f.out,'Ballistiskt vatten släcker branden vid '+f.x+' (kvar '+f.left+')');}
 function deliverCargo(){const c=a.get().cargo;pin(c.x,c.y-140);a.keys.KeyE=true;ropeSeconds(3);assert.equal(c.status,'attached','Generator kopplas med kroken');a.keys.KeyE=false;ropeSeconds(2);pin(c.to,a.ground(c.to)-150);a.keys.KeyE=true;ropeSeconds(3);a.keys.KeyE=false;a.updateOperation(dt);assert.equal(c.status,'delivered','Generator sänks på sin platta');}
 function rescue(p){pin(p.x,p.y-145);a.keys.KeyE=true;ropeSeconds(3);assert.equal(p.status,'attached','Vinschen fångar personen');a.keys.KeyE=false;ropeSeconds(3);assert.equal(p.status,'aboard','Person hissas ombord');}
-assert.equal(a.operations.length,7);a.selectMissions();assert.equal(nodes.missionList.children.length,8);{const cards=nodes.missionList.children;assert(/LOST VALLEY/.test(cards[0].innerHTML),'Expeditionen ligger först i listan');assert.equal(cards.filter(b=>/LOST VALLEY/.test(b.innerHTML)).length,1);assert(cards.slice(1).every(b=>!/LOST VALLEY/.test(b.innerHTML)));cards[0].onclick();const st=a.get();assert(st.L.lost,'Kortet startar den långa banan');assert(a.getLost().active);assert(a.getPads().length>=11);assert(a.getStars().length>0,'Schakten finns i banan');}assert(a.operations.every((l,i)=>!i||l.length>a.operations[i-1].length));
+assert.equal(a.operations.length,17);a.selectMissions();assert.equal(nodes.missionList.children.length,18);{const cards=nodes.missionList.children;assert(/LOST VALLEY/.test(cards[0].innerHTML),'Expeditionen ligger först i listan');assert.equal(cards.filter(b=>/LOST VALLEY/.test(b.innerHTML)).length,1);assert(cards.slice(1).every(b=>!/LOST VALLEY/.test(b.innerHTML)));cards[0].onclick();const st=a.get();assert(st.L.lost,'Kortet startar den långa banan');assert(a.getLost().active);assert(a.getPads().length>=11);assert(a.getStars().length>0,'Schakten finns i banan');}assert(a.operations.every((l,i)=>!i||l.length>a.operations[i-1].length));
 for(let i=0;i<a.operations.length;i++){
  start(a.OP_START+i);const st=a.get(),o=a.getOps();assert(!a.ready());assert.equal(st.enemies.length,(st.L.guns||[]).length);assert.equal(!!st.boss,!!st.L.boss);assert(st.L.ops);assert(st.heli.landed);a.render();
  if(st.L.gate){assert(st.people.every(p=>p.status==='sheltered'));const p=st.people[0];pin(p.x,p.y-145);a.keys.KeyE=true;ropeSeconds(3);assert.equal(p.status,'sheltered','Räddning öppnas först när platsen är säker');a.keys.KeyE=false;}
@@ -52,5 +52,29 @@ assert(climb(100)>climb(0)+8,'Water mass changes lift rather than being cosmetic
 start(a.OP_START+3);const person=a.get().people[1],h=pin(person.x,person.y-145);h.collective=315;h.hoverY=h.y;a.set({hoverMode:true});a.keys.KeyE=true;step(2.5);assert.equal(person.status,'attached');a.keys.KeyE=false;step(2.8);assert.equal(person.status,'aboard');assert(h.hp>90,'Cave offers real rotor clearance');
 // Render the new content using the same native canvas as the collision tests.
 start(a.OP_START+1);scoop();f=a.getOps().fires[0];pin(f.x,f.y-220);ropeSeconds(2);a.toggleWater();for(let i=0;i<70;i++){a.updateWinch(dt);a.updateOperation(dt);}const v=a.get();a.set({camera:f.x-v.vw*.55,cameraY:f.y-v.vh*.78});a.render();fs.writeFileSync('/tmp/fire-operation.png',nodes.game.toBuffer('image/png'));
+// Every mission's layout, checked against the terrain the seed actually produces rather than
+// against the numbers as written. A bridge authored with a 260-unit gap can still end up buried
+// if the ground beneath it rises, and a fire or a service pad placed inside an obstacle footprint
+// cannot be reached at all. People and gun emplacements are deliberately exempt: one researcher
+// waits under the arch by design, and the sentries use the rock as cover.
+for(let i=0;i<a.operations.length;i++){
+ start(a.OP_START+i);const L=a.get().L,obs=a.getObstacles();
+ for(const o of obs.filter(o=>o.type!=='pillar')){
+  let m=Infinity;for(let x=o.x;x<=o.x+o.w;x+=10)m=Math.min(m,a.ground(x)-(o.y+o.h));
+  assert(m>=95,L.name+': only '+m.toFixed(0)+' units under the '+o.type+' at x='+o.x);
+ }
+ const reach=[...(L.fires||[]).map(f=>['fire',f.x]),...(L.fieldPads||[]).map(x=>['field pad',x]),
+  ...(L.cargo?[['depot',L.cargo.x],['delivery pad',L.cargo.to]]:[])];
+ for(const [what,x] of reach){
+  assert(x>680&&x<L.length-60,L.name+': '+what+' at '+x+' is outside the flyable span');
+  for(const o of obs)assert(!(x>o.x-70&&x<o.x+o.w+70),L.name+': '+what+' at '+x+' sits in the '+o.type+' at x='+o.x);
+  for(const l of L.lakes||[])if(what==='fire')assert(!(x>l.x-40&&x<l.x+l.w+40),L.name+': '+what+' at '+x+' stands in a lake');
+ }
+ assert(L.gate!=='fire'||(L.fires||[]).length,L.name+': fire gate with no fires');
+ assert(L.gate!=='cargo'||L.cargo,L.name+': cargo gate with no cargo');
+ assert(!(L.fires||[]).length||(L.lakes||[]).length,L.name+': fires with nowhere to fill the bucket');
+ assert(!L.clear||(L.guns||[]).length||L.boss,L.name+': clear flag with nothing to clear');
+}
+console.log('PASS: every mission layout is reachable — clearance, footprints, lakes and gates');
 console.log('PASS: seven ordered missions, real scooping and ballistic drops, misses, rock interception, reset, pause, suspended mass and cave clearance');
 })().catch(e=>{console.error(e);process.exit(1)});
