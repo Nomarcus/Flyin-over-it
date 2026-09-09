@@ -1,6 +1,6 @@
 # Flyin Over It
 
-A mobile-friendly helicopter adventure game focused on free flight, smooth touch and gyro controls, and long open rescue missions.
+A mobile-friendly helicopter adventure game focused on free flight, smooth touch and gyro controls, and six varied rescue, cargo and firefighting missions.
 
 ## Play locally
 
@@ -17,14 +17,18 @@ Then open http://localhost:8000. Mobile sensor permissions require a secure HTTP
 - Touch left/right screen half: tilt that way.
 - Hold both halves: climb. Release both: descend.
 - Horizontal swipe: turn the nose toward the swipe.
-- WINCH: toggle lowering and raising.
+- WINCH / BUCKET: toggle lowering and raising.
+- DROP WATER / Space: toggle water release during firefighting missions.
 - Keyboard: A/D or arrows to tilt, W/S to control lift, Q to turn, E to lower the winch (release to raise), H to stabilize.
 - Gyro and sensitivity are available in settings.
 
 ## Latest version
 
 - Original smooth 2.5D flight feel with inertia and countersteering.
-- Long Valley: 26,000 world units, 11 checkpoint stations, far-beacon rescue and return flight.
+- Six selectable missions, increasing from 2,400 to 8,000 world units.
+- Physical water bucket: scoop from lakes, carry the extra weight, aim ballistic drops at fires.
+- Mission chains: deliver power before rescue, or extinguish fires before evacuation.
+- Long Valley is temporarily archived and absent from player navigation.
 - No invisible altitude ceiling. The camera pulls back as you climb so the valley floor stays
   in frame, and leads both your climb and your speed.
 - Fills the screen in portrait as well as landscape.
@@ -41,8 +45,9 @@ npm install
 npm test
 ```
 
-Eleven suites simulate touch events, flight, checkpoints, rescue completion, camera framing at
-altitude, portrait layout and the instrument rail. They do not replace physical phone testing.
+Four verification scripts cover touch, flight, collision geometry, damage, rendering, and all six
+mission completions. Water checks cover scooping, suspended mass, ballistic hits, misses, rock
+interception, restart and pause. They do not replace physical phone testing.
 
 ## Files
 
@@ -52,3 +57,4 @@ altitude, portrait layout and the instrument rail. They do not replace physical 
 - `docs/`: current status and historical design plan.
 
 Source snapshot: `22f3c48f06b2d4873bf858a6ba02a4d3b49e340c`.
+

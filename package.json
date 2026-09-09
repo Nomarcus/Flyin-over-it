@@ -1,10 +1,10 @@
 {
   "name": "flyin-over-it",
   "version": "1.0.0",
-  "description": "A mobile-friendly helicopter rescue game: free flight, touch and gyro controls, and one long open valley.",
+  "description": "Six varied helicopter rescue, cargo and firefighting missions with physical touch flight.",
   "private": true,
   "scripts": {
-    "test": "node tools/verify-touch.cjs && node tools/verify-graphics.cjs && node tools/verify-collisions.cjs"
+    "test": "node tools/verify-touch.cjs && node tools/verify-graphics.cjs && node tools/verify-collisions.cjs && node tools/verify-operations.cjs"
   },
   "devDependencies": {
     "@napi-rs/canvas": "0.1.100"

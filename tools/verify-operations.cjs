@@ -1,0 +1,43 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');const {createCanvas,loadImage}=require('@napi-rs/canvas');
+(async()=>{
+const kv={};globalThis.madeAudio=[];const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classes:new Set(),get classList(){const c=this.classes;return{toggle:(k,on)=>{on===undefined?(c.has(k)?c.delete(k):c.add(k)):(on?c.add(k):c.delete(k))},add:k=>c.add(k),remove:k=>c.delete(k),contains:k=>c.has(k)}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
+const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:()=>element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,
+ Audio:function(src){this.src=src;this.volume=0;this.paused=true;this.currentTime=0;this.loop=false;this.preload='';
+  this.duration=120;this.play=()=>{this.paused=false;return Promise.resolve()};this.pause=()=>{this.paused=true};
+  this.addEventListener=(t,fn)=>{if(t==='error')this.fail=fn};globalThis.madeAudio.push(this);},
+ testArt:{day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
+let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={operations,OP_START,getOps:()=>ops,updateOperation,updateBucketWinch,toggleWater,operationTarget,obstaclePolygon,circleContact,touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,getStars:()=>stars,Music,musicForState,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
+
+
+const dt=1/120;
+function pin(x,y){const h=a.get().heli;h.x=x;h.y=y;h.vx=h.vy=h.angle=h.av=0;h.landed=false;h.ropeNodes=[];h.rope=0;return h;}
+function ropeSeconds(s){for(let i=0;i<s*120;i++)a.updateWinch(dt);}
+function scoop(){const o=a.getOps(),l=o.lakes[0],h=pin(l.x+l.w/2,l.y-155);a.keys.KeyE=true;ropeSeconds(5);assert(o.water>99,'Skopa fylls genom repets kontakt med sjön: '+o.water);a.keys.KeyE=false;ropeSeconds(2);return h;}
+function extinguish(f){const h=pin(f.x,f.y-210);a.keys.KeyE=false;ropeSeconds(2);a.toggleWater();for(let i=0;i<5*120;i++){a.updateWinch(dt);a.updateOperation(dt);}assert(f.out,'Ballistiskt vatten släcker branden vid '+f.x+' (kvar '+f.left+')');}
+function deliverCargo(){const c=a.get().cargo;pin(c.x,c.y-140);a.keys.KeyE=true;ropeSeconds(3);assert.equal(c.status,'attached','Generator kopplas med kroken');a.keys.KeyE=false;ropeSeconds(2);pin(c.to,a.ground(c.to)-150);a.keys.KeyE=true;ropeSeconds(3);a.keys.KeyE=false;a.updateOperation(dt);assert.equal(c.status,'delivered','Generator sänks på sin platta');}
+function rescue(p){pin(p.x,p.y-145);a.keys.KeyE=true;ropeSeconds(3);assert.equal(p.status,'attached','Vinschen fångar personen');a.keys.KeyE=false;ropeSeconds(3);assert.equal(p.status,'aboard','Person hissas ombord');}
+assert.equal(a.operations.length,6);a.selectMissions();assert.equal(nodes.missionList.children.length,6);assert(!nodes.missionList.children.some(b=>/LOST VALLEY/.test(b.innerHTML)));assert(a.operations.every((l,i)=>!i||l.length>a.operations[i-1].length));
+for(let i=0;i<6;i++){
+ start(a.OP_START+i);const st=a.get(),o=a.getOps();assert(!a.ready());assert.equal(st.enemies.length,0);assert(!st.boss);assert(st.L.ops);assert(st.heli.landed);a.render();
+ if(st.L.gate){assert(st.people.every(p=>p.status==='sheltered'));const p=st.people[0];pin(p.x,p.y-145);a.keys.KeyE=true;ropeSeconds(3);assert.equal(p.status,'sheltered','Räddning öppnas först när platsen är säker');a.keys.KeyE=false;}
+ for(const f of o.fires){scoop();extinguish(f);}
+ if(st.cargo)deliverCargo();assert(st.people.every(p=>p.status==='waiting'));
+ for(const p of st.people)rescue(p);
+ assert.equal(st.heli.carrying,st.people.length);assert(st.people.every(p=>p.status==='aboard'));assert(o.fires.every(f=>f.out));assert(!o.bucket);
+ const h=st.heli;h.x=390;h.y=a.gearSupport();h.vx=h.vy=h.angle=h.av=0;h.landed=true;a.updateBase(2);assert.equal(a.get().mode,'debrief');assert(a.ready());assert(a.get().save.results[a.OP_START+i]);assert(nodes.modalActions.children.some(b=>b.textContent===(i===5?'VÄLJ UPPDRAG':'NÄSTA UPPDRAG')));
+ console.log('PASS: '+st.L.name+' – actual winch, cargo/water gates, return and result');
+}
+// Water is finite, misses cost water, and scenery blocks its swept trajectory.
+start(a.OP_START+1);let o=a.getOps(),f=o.fires[0];scoop();pin(f.x+210,f.y-210);ropeSeconds(2);a.toggleWater();for(let i=0;i<600;i++)a.updateOperation(dt);assert.equal(f.left,f.max);assert.equal(o.water,0);a.toggleWater();assert(!o.dropping);
+scoop();pin(f.x,f.y-220);ropeSeconds(2);const barrier={x:f.x-80,y:f.y-90,w:160,h:25,type:'roof',drip:0};a.getObstacles().push(barrier);a.toggleWater();for(let i=0;i<600;i++)a.updateOperation(dt);assert.equal(f.left,f.max,'Rock intercepts water');a.getObstacles().pop();
+start(a.OP_START+1);o=a.getOps();assert.equal(o.water,0);assert(o.fires.every(f=>!f.out&&f.left===f.max));scoop();a.toggleWater();a.pause();const before=o.water;step(1);assert.equal(o.water,before);assert(nodes.dropBtn.hidden);a.pause();a.updateHUD();assert(!nodes.dropBtn.hidden);
+// Same collective produces less lift with the full suspended bucket.
+function climb(water){start(a.OP_START+1);const h=pin(1900,150);a.getOps().water=water;h.rope=58;h.ropeSupport=1;h.collective=315;a.keys.KeyW=true;step(.6);return h.vy;}
+assert(climb(100)>climb(0)+8,'Water mass changes lift rather than being cosmetic');
+// Full simulation rescue inside the authored cave, with actual rotor/roof collision enabled.
+start(a.OP_START+3);const person=a.get().people[1],h=pin(person.x,person.y-145);h.collective=315;h.hoverY=h.y;a.set({hoverMode:true});a.keys.KeyE=true;step(2.5);assert.equal(person.status,'attached');a.keys.KeyE=false;step(2.8);assert.equal(person.status,'aboard');assert(h.hp>90,'Cave offers real rotor clearance');
+// Render the new content using the same native canvas as the collision tests.
+start(a.OP_START+1);scoop();f=a.getOps().fires[0];pin(f.x,f.y-220);ropeSeconds(2);a.toggleWater();for(let i=0;i<70;i++){a.updateWinch(dt);a.updateOperation(dt);}const v=a.get();a.set({camera:f.x-v.vw*.55,cameraY:f.y-v.vh*.78});a.render();fs.writeFileSync('/tmp/fire-operation.png',nodes.game.toBuffer('image/png'));
+console.log('PASS: six ordered missions, real scooping and ballistic drops, misses, rock interception, reset, pause, suspended mass and cave clearance');
+})().catch(e=>{console.error(e);process.exit(1)});

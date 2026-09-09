@@ -250,3 +250,19 @@
 .primary{background:linear-gradient(135deg,#ffbe73,#e98b48);color:#172e3b;border-color:#ffe0a3;box-shadow:0 7px 24px #081f3c55}
 .dialog{background:linear-gradient(145deg,#183747f5,#0b202ef7);border-color:#82968f80;box-shadow:0 24px 90px #06162390}
 #winchBtn{border-color:#e4be8080;background:linear-gradient(145deg,#1d4355ec,#102a3cef);box-shadow:inset 0 1px 0 #f6e0b429,0 4px 15px #061a354d}
+
+/* Six operations: compact controls, generous mission cards. */
+#selectBtn{display:none}
+#modal:has(.operations) .dialog{width:min(860px,94vw);max-height:90dvh;overflow:auto}
+.missionlist.operations{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0}
+.operations .operationCard{display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:20px;border:1px solid #9dd2cd35;border-radius:12px;background:linear-gradient(135deg,#254653aa,#122a36);gap:8px;min-height:158px;transition:border-color .2s,transform .2s}
+.operations .operationCard:hover{border-color:#ffbd74;transform:translateY(-2px)}
+.operations .operationCard small{font-size:10px;letter-spacing:1px;color:#9fcdc7}
+.operations .operationCard b{font-size:20px;letter-spacing:.5px;color:#fff2d8}
+.operations .operationCard span{font-size:12px;color:#b5c6c9}
+.operations .operationCard em{font-style:normal;font-size:11px;color:#ffbf79;margin-top:auto}
+#dropBtn{position:fixed;right:24px;bottom:max(18px,env(safe-area-inset-bottom));z-index:45;padding:15px 20px;border:1px solid #9beee2;border-radius:12px;background:#174a57ed;color:#dcfff4;font-weight:800;letter-spacing:1px;touch-action:none}
+#dropBtn:disabled{opacity:.5}#dropBtn[hidden],#waterStatus[hidden]{display:none!important}
+#waterStatus b{color:#9df2e0}#waterStatus em{font-size:10px;font-style:normal}
+@media(pointer:coarse){.bucketMode #mobile .actions{left:calc(50% - 80px)}#dropBtn{left:calc(50% - 8px);right:auto;width:148px;padding:14px 8px;bottom:max(14px,env(safe-area-inset-bottom));font-size:11px}}
+@media(max-width:620px){.missionlist.operations{grid-template-columns:1fr;gap:8px}.operations .operationCard{min-height:125px;padding:15px}.operations .operationCard b{font-size:18px}}
