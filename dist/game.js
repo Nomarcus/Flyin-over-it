@@ -546,7 +546,8 @@ function label(text,x,y,color='#d7e5df',size=11,align='center'){
 function glow(x,y,r,color){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2)}
 function palette(){const night=L.theme==='night',snow=L.theme==='snow',sun=L.theme==='sunset';return{top:snow?'#b7cace':night?'#244251':sun?'#776345':'#57726c',edge:snow?'#e4eddf':night?'#547683':sun?'#b19361':'#9ea88a',front:snow?'#506776':night?'#142b3b':sun?'#433f36':'#304955',facet:snow?'#657e87':night?'#1c3543':sun?'#585044':'#3f5961',tree:snow?'#547879':night?'#1d3f4b':'#35645e',treeLight:snow?'#acc8c5':night?'#335666':'#577e6a',night,snow};}
 // Keep the original 720-unit backdrop composition while the flight camera zooms in.
-function drawBackdrop(){const flightHeight=vh;ctx.save();ctx.scale(1,flightHeight/720);try{vh=720;drawSky();drawAtmosphere();}finally{vh=flightHeight;ctx.restore();}}
+let skySquash=1;
+function drawBackdrop(){const flightHeight=vh;skySquash=flightHeight/720;ctx.save();ctx.scale(1,skySquash);try{vh=720;drawSky();drawAtmosphere();}finally{vh=flightHeight;ctx.restore();}}
 // Environment presets own appearance only. Mission wind, geometry and flight remain authoritative.
 const ENVIRONMENTS={
  'alpine-day':{sky:['#3d779d','#a5d2db','#e2d9b6'],far:'#799baa',mid:'#486e82',lit:'#b6c9ca',snow:'#eff5ec',forest:'#28574f',weather:'clear'},
@@ -588,10 +589,83 @@ function drawMountainRange(speed,base,height,color,lit,snow){
   for(let j=0;j<4;j++){const x=peak-60+j*30;line(peak+(j-1)*7,py+70+j*6,x,base+60+alt,'#17395030',1.4);poly([[x,py+100+j*13],[x-25,foot-15],[x+12,foot]],'#15344613');}
  }
 }
+// The sun and the moon. Both used to be one flat circle, and worse, the sky layer is drawn
+// under a vertical scale (drawBackdrop squashes 720 design units into the real flight height),
+// so that circle came out as an oval on most phones. Everything here is drawn inside a matching
+// counter-scale, which is what keeps it round on every screen.
+//
+// Nothing is random: the craters and the sunspots sit at fixed coordinates so the moon looks
+// like the same moon every time you fly, the way a landmark should.
+const MOON_MARIA=[[-.30,-.22,.34,.26],[.18,-.34,.24,.17],[.30,.14,.28,.22],[-.16,.32,.22,.15],[-.44,.10,.16,.20]];
+const MOON_CRATERS=[[-.52,-.38,.09],[-.10,-.56,.07],[.42,-.44,.06],[.58,-.06,.05],[.46,.44,.08],
+ [.04,.60,.055],[-.38,.52,.05],[-.62,.16,.045],[.14,.10,.13],[-.06,-.14,.045],[.26,-.12,.035],
+ [-.30,-.02,.03],[.62,.24,.035],[-.20,-.44,.04]];
+function drawCelestial(x,y,r,night,sunset){
+ const squash=skySquash;                    // the scale drawBackdrop is already inside
+ ctx.save();ctx.translate(x,y);ctx.scale(1,1/squash);
+ const t=visualTime;
+ if(night){
+  // A cold body with its own light: a broad halo, then the disc, then the surface, then the
+  // limb going dark at the edge so it reads as a sphere rather than a sticker.
+  glow(0,0,r*7.5,'#b9d8ea12');
+  glow(0,0,r*3.2,'#cfe4f11e');
+  const body=ctx.createRadialGradient(-r*.32,-r*.36,r*.08,0,0,r);
+  body.addColorStop(0,'#fffdf0');body.addColorStop(.5,'#efe9d7');body.addColorStop(1,'#b4b3a6');
+  ellipse(0,0,r,r,body);
+  ctx.save();ctx.beginPath();ctx.arc(0,0,r,0,TAU);ctx.clip();
+  // Maria first — the wide grey seas that give the face its pattern — then craters on top of
+  // them. Each crater is a shadowed floor with a lit rim on the sunward side; that pair is the
+  // whole trick, and it is why the surface reads as pitted instead of speckled.
+  for(const [mx,my,mrx,mry] of MOON_MARIA){
+   ellipse(mx*r,my*r,mrx*r,mry*r,'#9c9a8c4e');
+   ellipse(mx*r-r*.02,my*r-r*.02,mrx*r*.82,mry*r*.82,'#8f8d7f34');
+  }
+  for(const [cx,cy,cr] of MOON_CRATERS){
+   ellipse(cx*r+cr*r*.16,cy*r+cr*r*.18,cr*r,cr*r,'#88857a66');        // shadowed floor
+   ellipse(cx*r-cr*r*.18,cy*r-cr*r*.20,cr*r*.86,cr*r*.86,'#fbf7e58c'); // sunward rim
+   ellipse(cx*r,cy*r,cr*r*.52,cr*r*.52,'#b0aa9a6e');                   // basin
+  }
+  // Limb darkening and the terminator, both inside the clip so nothing spills. Together they
+  // are what stops it looking like a sticker pasted on the sky.
+  const limb=ctx.createRadialGradient(0,0,r*.42,0,0,r);
+  limb.addColorStop(0,'#00000000');limb.addColorStop(1,'#233444a8');
+  ellipse(0,0,r,r,limb);
+  const term=ctx.createLinearGradient(-r*.2,-r*.5,r,r*.9);
+  term.addColorStop(0,'#16283a00');term.addColorStop(.55,'#16283a2e');term.addColorStop(1,'#0f1f30a6');
+  ellipse(0,0,r,r,term);
+  ctx.restore();
+ }else{
+  // The sun is the opposite problem: it has no surface you can look at, only light. So it is
+  // built entirely out of glow — a wide bloom, a corona that breathes, spokes that turn very
+  // slowly, and a core hot enough to be white in the middle of a warm disc.
+  const warm=sunset?['#ff9d4b','#ffc98a','#fff2d2']:['#ffd77a','#ffeab4','#fffdf0'];
+  glow(0,0,r*11,sunset?'#ff8a3a14':'#ffe6a310');
+  glow(0,0,r*5.2,sunset?'#ffab5520':'#fff0b81c');
+  ctx.save();ctx.globalCompositeOperation='screen';
+  for(let i=0;i<12;i++){
+   const a=i*TAU/12+t*.03,len=r*(3.4+Math.sin(t*.5+i*1.7)*.7);
+   poly([[Math.cos(a+.16)*r*.75,Math.sin(a+.16)*r*.75],
+    [Math.cos(a-.16)*r*.75,Math.sin(a-.16)*r*.75],
+    [Math.cos(a+.035)*len,Math.sin(a+.035)*len],
+    [Math.cos(a-.035)*len,Math.sin(a-.035)*len]],sunset?'#ffb06a0d':'#fff0bc0b');
+  }
+  ctx.restore();
+  const halo=ctx.createRadialGradient(0,0,r*.7,0,0,r*2.3);
+  halo.addColorStop(0,warm[0]+'55');halo.addColorStop(1,warm[0]+'00');
+  ellipse(0,0,r*2.3,r*2.3,halo);
+  const disc=ctx.createRadialGradient(-r*.12,-r*.14,r*.05,0,0,r);
+  disc.addColorStop(0,warm[2]);disc.addColorStop(.62,warm[1]);disc.addColorStop(1,warm[0]);
+  ellipse(0,0,r,r,disc);
+  const rim=ctx.createRadialGradient(0,0,r*.88,0,0,r*1.35);
+  rim.addColorStop(0,warm[1]+'88');rim.addColorStop(1,warm[1]+'00');
+  ellipse(0,0,r*1.35,r*1.35,rim);
+ }
+ ctx.restore();
+}
 function drawSky(){
  const e=environment(),g=ctx.createLinearGradient(0,0,0,720);e.sky.forEach((c,i)=>g.addColorStop(i/2,c));ctx.fillStyle=g;ctx.fillRect(0,0,vw,720);
- const sx=vw*.72-camera*PARALLAX.sky,sy=L.theme==='sunset'?240:100;
- glow(sx,sy,145,L.theme==='night'||e.aurora?'#c6e5f016':'#ffe9b633');ellipse(sx,sy,e.aurora?10:16,e.aurora?10:16,e.aurora?'#d9ebef':'#fff0c6b0');
+ const sx=vw*.72-camera*PARALLAX.sky,sy=L.theme==='sunset'?240:150;
+ drawCelestial(sx,sy,L.theme==='night'||e.aurora?30:27,L.theme==='night'||e.aurora,L.theme==='sunset');
  if(e.aurora){for(let band=0;band<3;band++){ctx.beginPath();for(let x=-50;x<vw+50;x+=18){const y=110+band*30+Math.sin(x*.006+visualTime*.07+band)*40;x===-50?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.strokeStyle=['#66dfbf12','#78a8e714','#83dec81a'][band];ctx.lineWidth=25;ctx.stroke();}}
  drawMountainRange(PARALLAX.farMountains,480,260,e.far,e.lit,e.snow);
  const haze=ctx.createLinearGradient(0,220,0,580);haze.addColorStop(0,'#cdded900');haze.addColorStop(1,e.sky[2]+'77');ctx.fillStyle=haze;ctx.fillRect(0,220,vw,360);
@@ -1327,29 +1401,35 @@ const AudioState={
   // detuned a few per cent so a held burst breathes instead of stuttering one sample.
   case 'gun':{
    const p=r(.06);
-   this.hiss(.028,.34,4200*p,{type:'highpass',q:.6,out,attack:.001});
-   this.hiss(.075,.30,1150*p,{type:'bandpass',q:1.4,end:520,out});
-   this.tone(128*p,.085,.16,'triangle',44,0,out,.002);
-   this.hiss(.05,.05,3000,{type:'bandpass',q:3,delay:.045,out});
-   this.hiss(.32,.045,420,{type:'lowpass',delay:.03,out});
+   this.hiss(.03,.7,4200*p,{type:'highpass',q:.6,out,attack:.001});
+   this.hiss(.11,.62,780*p,{type:'bandpass',q:1.1,end:340,out});
+   // The two low layers are what makes it land in the chest rather than the ear: a short
+   // mid punch for the body of the report, and a sub that keeps ringing under it.
+   this.tone(150*p,.13,.5,'triangle',48,0,out,.0015);
+   this.tone(62*p,.26,.42,'sine',26,0,out,.002);
+   this.hiss(.05,.09,3000,{type:'bandpass',q:3,delay:.045,out});
+   this.hiss(.36,.16,380,{type:'lowpass',delay:.03,out});
    break;}
   // Their fire, heard from wherever they are: no crack, everything under a lid. Distance does
   // the rest, so you can tell incoming from outgoing without looking.
   case 'enemyGun':
-   this.hiss(.11,.26,620*r(.1),{type:'lowpass',q:2,end:260,out});
-   this.tone(96*r(.08),.13,.10,'square',38,0,out,.004);
-   this.hiss(.42,.05,300,{type:'lowpass',delay:.05,out});
+   this.hiss(.15,.34,430*r(.1),{type:'lowpass',q:2,end:190,out,attack:.006});
+   this.tone(104*r(.08),.17,.24,'square',34,0,out,.005);
+   this.tone(52*r(.08),.3,.2,'sine',21,0,out,.006);
+   this.hiss(.45,.1,240,{type:'lowpass',delay:.05,out});
    break;
   // Launch: quiet at the start, loudest halfway out. The filter opens upward, which is the
   // opposite of every impact sound in the set.
   case 'rocket':
-   this.hiss(.55,.24,300,{type:'bandpass',q:.8,end:2600,out,attack:.05});
-   this.tone(190,.5,.12,'sawtooth',52,0,out,.03);
-   this.tone(74,.22,.10,'sine',30,0,out,.004);
+   this.hiss(.6,.46,300,{type:'bandpass',q:.8,end:2600,out,attack:.05});
+   this.tone(190,.55,.3,'sawtooth',52,0,out,.03);
+   this.tone(58,.34,.42,'sine',24,0,out,.003);
+   this.hiss(.09,.34,900,{type:'lowpass',out,attack:.001});
    break;
   case 'boom':
-   this.tone(78,.9,.30,'sine',18,0,out,.004);
-   this.hiss(.7,.42,520,{type:'lowpass',end:120,out,attack:.002});
+   this.tone(78,.95,.62,'sine',16,0,out,.003);
+   this.tone(42,1.1,.42,'sine',13,.02,out,.006);
+   this.hiss(.75,.62,520,{type:'lowpass',end:110,out,attack:.002});
    this.hiss(.16,.2,1800,{type:'bandpass',q:.8,out,attack:.001});
    for(let i=0;i<4;i++)this.hiss(.06,.06,900*r(.5),{type:'bandpass',q:4,delay:.18+i*.11,out});
    break;

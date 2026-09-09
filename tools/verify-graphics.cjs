@@ -3,7 +3,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert');const {createCa
 const kv={};const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classes:new Set(),get classList(){const c=this.classes;return{toggle:(k,on)=>{on===undefined?(c.has(k)?c.delete(k):c.add(k)):(on?c.add(k):c.delete(k))},add:k=>c.add(k),remove:k=>c.delete(k),contains:k=>c.has(k)}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
 const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:tag=>tag==='canvas'?createCanvas(1,1):element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,testArt:{pine:await loadImage(root+'/assets/nature/pine-mature.webp'),tropical:await loadImage(root+'/assets/backgrounds/tropical-range.webp'),range:await loadImage(root+'/assets/backgrounds/alpine-range.webp'),day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
-code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={drawPillar,drawSpan,drawOverhang,drawBoulder,ctx,touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,getStars:()=>stars,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={drawCelestial,drawBackdrop,getSkySquash:()=>skySquash,drawPillar,drawSpan,drawOverhang,drawBoulder,ctx,touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,getStars:()=>stars,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
 
 
 a.startLost(true);a.begin();
@@ -31,5 +31,52 @@ if(process.env.GRAPHICS_PREVIEW){
  fs.writeFileSync(process.env.GRAPHICS_PREVIEW,c.toBuffer('image/png'));
  a.startLost(true);a.begin();a.get().heli.x=3650;a.get().heli.y=620;a.set({camera:3100,cameraY:140});a.render();
  fs.writeFileSync(process.env.GRAPHICS_PREVIEW.replace('.png','-scene.png'),c.toBuffer('image/png'));
+}
+// The sun and the moon are drawn inside the sky layer, which is squashed vertically to fit the
+// real flight height. A body drawn without a counter-scale comes out as an oval on most phones,
+// which is exactly what it used to do. Measure the painted disc rather than trusting the code.
+{
+ const cv=a.ctx.canvas,c2=a.ctx;
+ for(const [what,night] of [['moon',true],['sun',false]]){
+  c2.save();c2.setTransform(1,0,0,1,0,0);c2.clearRect(0,0,cv.width,cv.height);c2.restore();
+  c2.save();
+  c2.setTransform(1,0,0,1,0,0);
+  c2.scale(1,.55);                       // a squashed sky layer, as on a landscape phone
+  a.drawCelestial(320,300,40,night,false);
+  c2.restore();
+  const img=c2.getImageData(0,0,cv.width,Math.min(cv.height,400)).data,W=cv.width;
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9,vals=[];
+  for(let y=0;y<Math.min(cv.height,400);y++)for(let x=0;x<W;x++){
+   const i=(y*W+x)*4,al=img[i+3];
+   if(al<140)continue;                   // the halo is deliberately faint; measure the body
+   const lum=(img[i]*.3+img[i+1]*.59+img[i+2]*.11);
+   if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;
+   vals.push(lum);
+  }
+  assert(vals.length>400,what+' barely painted anything ('+vals.length+' px)');
+  const w=maxX-minX,h=(maxY-minY)/.55,   // undo the layer squash to compare like with like
+   ratio=w/h;
+  assert(ratio>.88&&ratio<1.14,what+' is an oval, not a disc: '+w+' wide by '+h.toFixed(0)+' tall (ratio '+ratio.toFixed(2)+')');
+  // A flat fill has almost no internal variation. Craters, maria and limb shading do.
+  const mean=vals.reduce((s,v)=>s+v,0)/vals.length;
+  const sd=Math.sqrt(vals.reduce((s,v)=>s+(v-mean)*(v-mean),0)/vals.length);
+  // A control: the flat circle this replaced, measured the same way, so the thresholds below
+  // are the line between "has depth" and "is a sticker" rather than numbers picked by eye.
+  const floor=night?7:2.5;
+  assert(sd>floor,what+' is a flat disc with no shape in it (variation '+sd.toFixed(1)+', needs '+floor+')');
+ }
+
+ // The control itself: the flat ellipse the celestial bodies replaced.
+ {
+  const c2=a.ctx,cv=c2.canvas;
+  c2.save();c2.setTransform(1,0,0,1,0,0);c2.clearRect(0,0,cv.width,cv.height);
+  c2.fillStyle='#fff0c6';c2.beginPath();c2.ellipse(320,300,40,40,0,0,Math.PI*2);c2.fill();c2.restore();
+  const img=c2.getImageData(0,0,cv.width,400).data;let vals=[];
+  for(let i=0;i<img.length;i+=4)if(img[i+3]>=140)vals.push(img[i]*.3+img[i+1]*.59+img[i+2]*.11);
+  const mean=vals.reduce((s,v)=>s+v,0)/vals.length;
+  const sd=Math.sqrt(vals.reduce((s,v)=>s+(v-mean)*(v-mean),0)/vals.length);
+  assert(sd<2.0,'the flat control measured '+sd.toFixed(2)+', so the thresholds above no longer separate flat from shaped');
+ }
+ console.log('PASS: the sun and the moon stay circular under the squashed sky layer, and both have a surface');
 }
 })().catch(e=>{console.error(e);process.exit(1)});

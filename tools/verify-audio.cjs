@@ -38,11 +38,21 @@ function measure(fire,seconds=1.6){
  const band=(cut,hi)=>{const k=Math.exp(-2*Math.PI*cut/RATE);let z=0,e=0;
   for(let i=0;i<N;i++){z=mono[i]*(1-k)+z*k;const v=hi?mono[i]-z:z;e+=v*v;}return Math.sqrt(e/N);};
  const low=band(300,false),high=band(2000,true),mid=Math.max(1e-9,rms-low*.5-high*.5);
+ // Brightness alone stops describing a shot once it has real bass under it, so measure the
+ // transient separately: how much energy above 2 kHz lands in the first 12 ms. That is the
+ // crack, and it is what a weak-sounding gun is missing.
+ const win=Math.round(.012*RATE);
+ const crack=(()=>{const k=Math.exp(-2*Math.PI*2000/RATE);let z=0,e=0;
+  for(let i=0;i<win;i++){z=mono[i]*(1-k)+z*k;const v=mono[i]-z;e+=v*v;}return Math.sqrt(e/win);})();
  let panL=0,panR=0;for(let i=0;i<N;i++){panL+=L[i]*L[i];panR+=R[i]*R[i];}
- return{peak,rms,attack:attack/RATE,dur:tail/RATE,low,mid,high,
+ return{peak,rms,attack:attack/RATE,dur:tail/RATE,low,mid,high,crack,
   bright:high/Math.max(1e-9,low+high),pan:(Math.sqrt(panR)-Math.sqrt(panL))/Math.max(1e-9,Math.sqrt(panR)+Math.sqrt(panL))};
 }
 
+// Ablation-checked thresholds, so neither half of a shot can quietly go missing. With the 3 ms
+// crack layer deleted the transient measures 0.0077 against 0.024 with it; with the two bass
+// layers deleted the low band measures 0.0009 against 0.0097.
+const CRACK_MIN=.013,PUNCH_MIN=.004;
 const NAMES=['gun','enemyGun','rocket','boom','hit','strike','touch','touchHard','latch','rescue',
  'delivered','fill','water','steam','flare','alarm','lock','fuelWarn','hullWarn','overheat',
  'checkpoint','star','switch','ui','wreck'];
@@ -50,8 +60,8 @@ const m={};
 for(const n of NAMES)m[n]=measure(A=>A.sfx(n));
 
 if(process.env.SFX_TABLE){
- console.log('name        peak    rms     attack   dur    bright');
- for(const n of NAMES)console.log(n.padEnd(11)+m[n].peak.toFixed(3).padStart(6)+m[n].rms.toFixed(4).padStart(8)+(m[n].attack*1000).toFixed(1).padStart(8)+'ms'+m[n].dur.toFixed(2).padStart(7)+m[n].bright.toFixed(3).padStart(8));
+ console.log('name        peak    rms     attack   dur    bright    crack      low');
+ for(const n of NAMES)console.log(n.padEnd(11)+m[n].peak.toFixed(3).padStart(6)+m[n].rms.toFixed(4).padStart(8)+(m[n].attack*1000).toFixed(1).padStart(8)+'ms'+m[n].dur.toFixed(2).padStart(7)+m[n].bright.toFixed(3).padStart(8)+m[n].crack.toFixed(4).padStart(9)+m[n].low.toFixed(4).padStart(9));
 }
 // 1. Every sound in the table actually makes a sound, and none of them clips the output.
 for(const n of NAMES){
@@ -80,11 +90,14 @@ assert(closest.d>.16,'two sounds are too alike to tell apart: '+closest.pair+' (
 // again quickly, or a held burst turns into a wash.
 assert(m.gun.attack<.012,'the cannon does not crack; it takes '+(m.gun.attack*1000).toFixed(1)+' ms to reach half level');
 assert(m.gun.dur<.55,'the cannon rings on for '+m.gun.dur.toFixed(2)+'s');
-// 0.30 is not arbitrary: deleting the 3 ms crack layer measures 0.21, so this threshold is
-// exactly the one that notices if the transient is ever lost.
-assert(m.gun.bright>.30,'the cannon is too dull (brightness '+m.gun.bright.toFixed(2)+')');
-// Their fire must be unmistakably darker than yours, so incoming and outgoing never blur.
-assert(m.enemyGun.bright<m.gun.bright*.75,'their fire is not darker than yours ('+m.enemyGun.bright.toFixed(2)+' vs '+m.gun.bright.toFixed(2)+')');
+// Both halves of a shot that lands: the crack at the front and the weight underneath it. The
+// thresholds below are ablation-checked — deleting the layer that provides each one drops the
+// measurement past its threshold, so neither can quietly go missing.
+assert(m.gun.crack>CRACK_MIN,'the cannon has no crack in it ('+m.gun.crack.toFixed(4)+')');
+assert(m.gun.low>PUNCH_MIN,'the cannon has no weight under it ('+m.gun.low.toFixed(4)+')');
+// Their fire must be unmistakably duller than yours, so incoming and outgoing never blur.
+assert(m.enemyGun.crack<m.gun.crack*.6,'their fire is not duller than yours ('+m.enemyGun.crack.toFixed(4)+' vs '+m.gun.crack.toFixed(4)+')');
+assert(m.gun.peak>m.enemyGun.peak*1.15,'their fire is as loud as your own cannon');
 // And no two shots are identical: the engine detunes each one.
 const shots=[measure(A=>A.sfx('gun')),measure(A=>A.sfx('gun')),measure(A=>A.sfx('gun'))];
 assert(new Set(shots.map(s=>s.rms.toFixed(6))).size>1,'every shot is the same sample');
