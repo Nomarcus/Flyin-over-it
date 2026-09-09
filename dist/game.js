@@ -781,8 +781,9 @@ function heliBody(x,y,a,dir,t=0,isBoss=false){
  box(-26,-30,-6,-18,-25,6,'#263f4b','#596f70');box(-3,-47,-2,1,-34,2,'#6d8586','#d0d5b5');
  // Barrel shares its exact origin with weapon().
  
- const rotor=isBoss?visualTime*55:heli.rotor;
- if(isBoss||mode!=='wreck')for(let blade=0;blade<4;blade++){const ang=rotor+blade*Math.PI/2,c=Math.cos(ang),sn=Math.sin(ang),r1=5,r2=91,w=2.4;face([[c*r1-sn*w,-47,sn*r1+c*w],[c*r2-sn*w,-47,sn*r2+c*w],[c*r2+sn*w,-47,sn*r2-c*w],[c*r1+sn*w,-47,sn*r1-c*w]],'#dbe7eded');face([[c*79-sn*w,-47,sn*79+c*w],[c*r2-sn*w,-47,sn*r2+c*w],[c*r2+sn*w,-47,sn*r2-c*w],[c*79+sn*w,-47,sn*79-c*w]],'#ff6b24');}
+ const rotor=isBoss?visualTime*55:heli.rotor,rotorBlur=isBoss?.8:clamp((heli.spool-.32)/.48,0,1);
+ // Visible blade opacity fades as RPM increases; the collision disc remains unchanged.
+ if(isBoss||mode!=='wreck')for(let blade=0;blade<4;blade++){const ang=rotor+blade*Math.PI/2,c=Math.cos(ang),sn=Math.sin(ang),r1=5,r2=91,w=2.4;face([[c*r1-sn*w,-47,sn*r1+c*w],[c*r2-sn*w,-47,sn*r2+c*w],[c*r2+sn*w,-47,sn*r2-c*w],[c*r1+sn*w,-47,sn*r1-c*w]],'rgba(219,231,237,'+(1-rotorBlur*.83)+')');face([[c*79-sn*w,-47,sn*79+c*w],[c*r2-sn*w,-47,sn*r2+c*w],[c*r2+sn*w,-47,sn*r2-c*w],[c*79+sn*w,-47,sn*79-c*w]],'rgba(255,107,36,'+(1-rotorBlur*.7)+')');}
  // Painter sorting keeps roof, skids, windows and blades in the correct depth order.
  faces.sort((a,b)=>a.z-b.z);for(const f of faces){const pts=f.pp.map(p=>[p.x,p.y]);poly(pts,f.color);if(f.color.length===7){const ys=f.pp.map(p=>p.y),topY=Math.min(...ys),bottomY=Math.max(...ys);if(bottomY-topY>4){const light=ctx.createLinearGradient(-30,topY,45,bottomY);light.addColorStop(0,'#fff7df40');light.addColorStop(.5,'#fff2c500');light.addColorStop(1,'#071b3a50');poly(pts,light);}}}
  // Surface decals are projected onto the visible cabin after the volume pass.
@@ -814,11 +815,26 @@ function heliBody(x,y,a,dir,t=0,isBoss=false){
  const bent=isBoss?0:(heli.rotorHurt||0);
  const disk=[];for(let j=0;j<=40;j++){const ang=j/40*TAU,wob=1-bent*.09*Math.abs(Math.sin(ang*2+rotor*.3));
   const p=point([Math.cos(ang)*92*wob,-47+bent*Math.sin(ang*2+rotor*.3)*3.5,Math.sin(ang)*92*wob]);disk.push([p.x,p.y]);}
- if(isBoss||mode!=='wreck')poly(disk,bent>.25?'#e1efdf07':'#e1efdf0b');if(!reduceMotion&&(isBoss||mode!=='wreck')){for(let j=0;j<3;j++){ctx.beginPath();for(let k=0;k<14;k++){const ang=rotor*.3+j*TAU/3+k*.042,p=point([Math.cos(ang)*88,-47,Math.sin(ang)*88]);k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)}ctx.strokeStyle='#dce9ce25';ctx.lineWidth=1.2;ctx.stroke();}}
+ if(isBoss||mode!=='wreck'){
+  poly(disk,'rgba(218,231,234,'+(.012+rotorBlur*.065)+')');
+  for(let ring=0;ring<3;ring++)for(let j=0;j<4;j++){
+   ctx.beginPath();for(let k=0;k<=18;k++){const ang=rotor*.3+j*TAU/4+k*.075,p=point([Math.cos(ang)*(87-ring*5),-47,Math.sin(ang)*(87-ring*5)]);k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y);}
+   ctx.strokeStyle='rgba(233,243,245,'+(rotorBlur*(.08-ring*.018))+')';ctx.lineWidth=2.3;ctx.stroke();
+  }
+ }
  const hub=point([-1,-48,0]);ellipse(hub.x,hub.y+1,6,2.7,'#142b39');ellipse(hub.x,hub.y-1,5,2.8,'#f57626');ellipse(hub.x-1,hub.y-2,2.5,.7,'#ffd29c');for(const sign of [-1,1]){const p=point([sign*5,-44,0]),q=point([sign*8,-47,0]);line(p.x,p.y,q.x,q.y,'#b5c8d3',.8);}
- const tail=point([-100,-22,4]);ctx.save();ctx.translate(tail.x,tail.y);ctx.rotate(rotor*1.9);line(-12,0,12,0,'#e4eef3',2.4);line(0,-12,0,12,'#e4eef3',2.4);for(const sign of [-1,1]){line(sign*8,0,sign*12,0,'#ff641f',2.6);line(0,sign*8,0,sign*12,'#ff641f',2.6);}ellipse(0,0,2.4,2.4,'#183347');ctx.restore();ellipse(tail.x,tail.y,13,13,'#c7ded00d');
+ const tail=point([-100,-22,4]);ctx.save();ctx.translate(tail.x,tail.y);ctx.rotate(rotor*1.9);ctx.globalAlpha=1-rotorBlur*.8;line(-12,0,12,0,'#e4eef3',2.4);line(0,-12,0,12,'#e4eef3',2.4);for(const sign of [-1,1]){line(sign*8,0,sign*12,0,'#ff641f',2.6);line(0,sign*8,0,sign*12,'#ff641f',2.6);}ellipse(0,0,2.4,2.4,'#183347');ctx.restore();ellipse(tail.x,tail.y,13,13,'rgba(221,236,241,'+(.02+rotorBlur*.11)+')');ctx.save();ctx.strokeStyle='rgba(244,131,56,'+(rotorBlur*.27)+')';ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(tail.x,tail.y,11,rotor*.2,rotor*.2+4.6);ctx.stroke();ctx.restore();
  const lamp=point([-26,-24,16]);ellipse(lamp.x,lamp.y,2.2,2.2,Math.sin(visualTime*4)>0?'#ed9b79':'#815e53');
- const side=point([-79,-12,Math.cos(yaw)>=0?4:-4]);if(Math.abs(Math.cos(yaw))>.65){ctx.save();ctx.translate(side.x,side.y);ctx.textAlign=dir===1?'left':'right';ctx.font='bold 5px sans-serif';ctx.fillStyle='#fff9ef';ctx.fillText(isBoss?'MK–IV':'RESCUE 07',0,0);ctx.restore();}
+ // Tail lettering follows the boom plane, rather than a screen-space label.
+ if(Math.abs(Math.cos(yaw))>.45){
+  const sign=Math.cos(yaw)>0?1:-1,tailPoint=(xx,yy)=>point([xx,yy,sign*(3+(xx+101)/62*5)]);
+  const origin=tailPoint(sign>0?-86:-48,-11),along=tailPoint(sign>0?-85:-49,-11),down=tailPoint(sign>0?-86:-48,-10);
+  ctx.save();ctx.transform(along.x-origin.x,along.y-origin.y,down.x-origin.x,down.y-origin.y,origin.x,origin.y);
+  ctx.font='700 5px sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillStyle='#fff7ec';ctx.fillText(isBoss?'MK IV':'RESCUE 07',0,0,34);ctx.restore();
+ }
+ // Searchlight and winch housings are attached to the same projected aircraft geometry.
+ const light=point([26,13,9]);ellipse(light.x,light.y,4.7,3.4,'#173341');ellipse(light.x+.5,light.y,2.7,2,'#adc4cd');ellipse(light.x+.8,light.y+.3,1.8,1.4,'#fff2bc');
+ const mount=point([-6,21,17]);ctx.save();ctx.translate(mount.x,mount.y);ctx.fillStyle='#17313f';ctx.fillRect(-7,-5,14,5);line(-6,-5,6,-5,'#abc0c7',1);ellipse(3,-2,3,3,'#e66b2a');ellipse(3,-2,1.5,1.5,'#213b48');ctx.restore();
  ctx.restore();
 }
 function drawHeli(){if(mode==='failed')return;const h=heli,alt=ground(h.x)-h.y;ellipse(h.x,ground(h.x)+5,clamp(72-alt*.08,24,72),clamp(10-alt*.01,4,10),'#061b2550');
@@ -827,12 +843,18 @@ function drawHeli(){if(mode==='failed')return;const h=heli,alt=ground(h.x)-h.y;e
   for(const [color,width] of [['#071b28b0',3.7],['#b5c5ba',1.8],['#ecedcf88',.65]]){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(nodes[0].x,nodes[0].y);for(let i=1;i<nodes.length;i++)ctx.lineTo(nodes[i].x,nodes[i].y);ctx.stroke();}
   ctx.save();ctx.translate(h.hookX,h.hookY);ctx.rotate(-h.ropeAngle);
   const hookPath=()=>{ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(0,7);ctx.bezierCurveTo(0,16,13,15,10,7);ctx.lineTo(8,9);};
-  ctx.strokeStyle='#071b26';ctx.lineWidth=4.5;hookPath();ctx.stroke();ctx.strokeStyle='#d2c6a1';ctx.lineWidth=2.3;hookPath();ctx.stroke();
+  ctx.strokeStyle='#071b26';ctx.lineWidth=4.5;hookPath();ctx.stroke();ctx.strokeStyle='#ed672c';ctx.lineWidth=2.8;hookPath();ctx.stroke();
   ellipse(0,0,3.4,3.4,'#8ba19a');ellipse(0,0,1.5,1.5,'#173340');line(-2,3,2,3,'#e4bf73',2.5);
   if(h.ropeTarget)line(1,3,10,7,'#c4d4c4',1.2);ctx.restore();ctx.lineCap='butt';ctx.lineJoin='miter';
  }
 
- if((palette().night||hoverMode||keys.KeyE)&&alt>50){const mount=rotateLocal(20,13),g=ctx.createLinearGradient(0,mount.y,0,ground(h.x));g.addColorStop(0,'#fff4b910');g.addColorStop(1,'#fff4b92b');poly([[mount.x,mount.y],[h.x+80,ground(h.x+80)],[h.x-60,ground(h.x-60)]],g);ellipse(h.x+10,ground(h.x)+2,72,6,'#efdb9933');}
+ if((palette().night||hoverMode||keys.KeyE)&&alt>50){
+  const yaw=h.turn>0?h.yaw:(h.dir===1?0:Math.PI),lp=projectHeliPoint(26,13,9,yaw,h.bank),mount=rotateLocal(lp.x,lp.y),endY=Math.min(ground(h.x),mount.y+400);
+  // Nested low-alpha cones feather both the edge and the far end without screen blur.
+  for(let layer=0;layer<5;layer++){const w=80-layer*12,g=ctx.createLinearGradient(0,mount.y,0,endY);g.addColorStop(0,'#fff4cf05');g.addColorStop(.45,'#fff4cf08');g.addColorStop(.85,'#fff4cf06');g.addColorStop(1,'#fff4cf00');poly([[mount.x-2,mount.y],[h.x+10+w,endY],[h.x+10-w,endY],[mount.x+2,mount.y]],g);}
+  ellipse(h.x+10,ground(h.x)+2,65,6,'#efdb991a');
+ }
+
  if(h.landed){const yaw=h.turn>0?h.yaw:(h.dir===1?0:Math.PI);for(const z of [-25,25]){const a=gearPoint(-37,30.8-h.compression,z,yaw,h.bank),b=gearPoint(38,30.8-h.compression,z,yaw,h.bank),aa=rotateLocal(a.x,a.y),bb=rotateLocal(b.x,b.y);line(aa.x,aa.y+1,bb.x,bb.y+1,'#061b28b0',3);}}heliBody(h.x,h.y,h.angle,h.dir);if(mode==='playing'){const g=weapon();if(muzzle>0){ctx.save();ctx.translate(g.x,g.y);ctx.rotate(Math.atan2(g.dy,g.dx));poly([[0,-3],[17,-8],[10,-1],[31,0],[10,3],[18,8],[0,4]],'#ffe3a0');ctx.restore();glow(g.x,g.y,27,'#ffe2ac55');}
  // Manual reticle follows exactly the same transformed vector as bullets and rockets.
  if(hoverMode)label('STAB',h.x,h.y-65,'#c3e9d2',9);}}
@@ -1277,5 +1299,6 @@ addEventListener('blur',()=>{if(lost.active)saveLost();clearInput();if(mode==='p
 let previous=0,accumulator=0;function frame(now){const dt=Math.min(.08,(now-previous)/1000||0);previous=now;accumulator+=dt;while(accumulator>=1/120){fixedUpdate(1/120);accumulator-=1/120;}Music.want(musicForState());Music.update(dt);render();requestAnimationFrame(frame);}
 resize();loadLevel(OP_START,false);requestAnimationFrame(frame);
 })();
+
 
 
