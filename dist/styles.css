@@ -325,3 +325,10 @@
  padding:11px 26px;border-radius:999px;border:1px solid #9dd2cd44;background:#0d2230cc;color:#cfe4e1;
  font:600 11px/1 ui-monospace,monospace;letter-spacing:2px}
 @media(max-height:520px){#creditsRoll h2{margin-top:14vh}}
+
+#hud #compactHud{right:max(78px,calc(env(safe-area-inset-right) + 62px));min-width:0}
+#hud #compactGoal{min-width:0;overflow:hidden;text-overflow:ellipsis;max-width:32%;line-height:1.35}
+
+/* The finale light belongs in the same reachable action slot as the winch. */
+#mobile #lightBtn{position:relative;inset:auto;width:96px;height:44px;border-radius:22px;pointer-events:auto;font-size:12px;letter-spacing:1.4px;background:#102c39ed;border:1px solid #c4d4d866;color:#f3e5c7}
+#mobile #lightBtn.on{background:#e7bc78;color:#20180c;border-color:#ffe0a5}

@@ -5,10 +5,10 @@ const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orie
  Audio:function(src){this.src=src;this.volume=0;this.paused=true;this.currentTime=0;this.loop=false;this.preload='';
   this.duration=120;this.play=()=>{this.paused=false;return Promise.resolve()};this.pause=()=>{this.paused=true};
   this.addEventListener=(t,fn)=>{if(t==='error')this.fail=fn};globalThis.madeAudio.push(this);},
- testArt:{pine:await loadImage(root+'/assets/nature/pine-mature.webp'),tropical:await loadImage(root+'/assets/backgrounds/tropical-range.webp'),range:await loadImage(root+'/assets/backgrounds/alpine-range.webp'),day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
+ testArt:{jungleTree:await loadImage(root+'/assets/nature/rainforest-tree.png'),pine:await loadImage(root+'/assets/nature/pine-mature.webp'),tropical:await loadImage(root+'/assets/backgrounds/tropical-range.webp'),range:await loadImage(root+'/assets/backgrounds/alpine-range.webp'),day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
 
-code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={startClimb,updateClimb,climbBand,climbObstacles,drawClimb,drawClimbWeather,finishClimb,closeCredits,getClimb:()=>climb,CLIMB_FLOOR,CLIMB_TOP,CLIMB_WIDE,CLIMB_PADS,CLIMB_LEVEL,collideObstacles,getObstacles:()=>obstacles,hitHeli,failMission,updateWreck,getWreck:()=>wreck,keys,edges,begin,fixedUpdate,render,updateHUD,ground,Music,AudioState,gearSupport,loadLevel,selectMissions,get:()=>({heli,L,mode,camera,cameraY,vw,vh,save,wind}),set:(o)=>{if('mode'in o)mode=o.mode}};})();`);
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={startClimb,updateClimb,climbBand,climbObstacles,drawClimb,drawClimbWeather,finishClimb,closeCredits,getClimb:()=>climb,CLIMB_FLOOR,CLIMB_TOP,CLIMB_WIDE,CLIMB_PADS,CLIMB_LEVEL,collideObstacles,getObstacles:()=>obstacles,hitHeli,failMission,updateWreck,getWreck:()=>wreck,keys,edges,begin,fixedUpdate,render,updateHUD,ground,Music,AudioState,gearSupport,loadLevel,selectMissions,get:()=>({heli,L,mode,camera,cameraY,vw,vh,save,wind}),set:(o)=>{if('cameraY'in o)cameraY=o.cameraY;if('mode'in o)mode=o.mode}};})();`);
 vm.createContext(sandbox);vm.runInContext(code,sandbox);
 const a=sandbox.api;
 const step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)};
@@ -54,6 +54,8 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
  for(let i=1;i<a.CLIMB_PADS.length;i++)
   assert(obs.some(o=>o.deck===i&&Math.abs(o.y-a.CLIMB_PADS[i].y)<2),'the ledge at '+a.CLIMB_PADS[i].y+' is not solid');
  assert(obs.some(o=>o.deck==='station'),'the station deck is not solid');
+ const station=obs.find(o=>o.deck==='station');
+ assert(station.x-70>=205 && a.CLIMB_WIDE-70-station.x-station.w>=205,'station must be reachable from below on either side');
 }
 
 // 2. The weather happens in the right order on the way up, and the dark band really is dark.
@@ -187,9 +189,13 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
  a.startClimb(true);a.begin();
  const h4=a.get().heli,c=a.getClimb();
  c.total=214;c.crashes=2;
- h4.x=a.CLIMB_WIDE*.5;h4.y=a.CLIMB_TOP+20;h4.vx=0;h4.vy=0;h4.landed=true;
+ h4.x=a.CLIMB_WIDE*.5;h4.y=a.CLIMB_TOP-30.8;h4.vx=0;h4.vy=0;h4.landed=true;
+ h4.x=110;
+ for(let i=0;i<80;i++)a.updateClimb(1/60);
+ assert.equal(a.get().mode,'playing','flying beside the station must not finish the mission');
+ h4.x=a.CLIMB_WIDE*.5;
  let atFinish=0;
- for(let i=0;i<200&&a.get().mode==='playing';i++){h4.landed=true;h4.y=a.CLIMB_TOP+20;h4.vx=0;a.updateClimb(1/60);atFinish=c.total;}
+ for(let i=0;i<200&&a.get().mode==='playing';i++){h4.landed=true;h4.y=a.CLIMB_TOP-30.8;h4.vx=0;a.updateClimb(1/60);atFinish=c.total;}
  assert.equal(a.get().mode,'credits','landing on the station ends the game');
  assert(c.arrived,'and it is marked as arrived');
  const roll=nodes.creditsRoll.innerHTML;
@@ -217,11 +223,13 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
  const h5=a.get().heli,c=a.getClimb();
  for(const f of [0,.3,.5,.6,.85,1]){
   h5.y=a.CLIMB_FLOOR+(a.CLIMB_TOP-a.CLIMB_FLOOR)*f;h5.x=a.CLIMB_WIDE*.5;
-  c.mood=a.climbBand(h5.y);
+  c.mood=a.climbBand(h5.y);a.set({cameraY:h5.y-a.get().vh*.5});
   for(const light of [false,true]){c.light=light;a.updateHUD();a.render();}
+ if(f===1)fs.writeFileSync('/tmp/climb-station.png',nodes.game.toBuffer('image/png'));
  }
  assert(/CLOUDBASE STATION/.test(nodes.compactGoal.textContent),'and the rail says where you are going, got '+nodes.compactGoal.textContent);
  assert(/TO GO/.test(nodes.compactGoal.textContent),'and how much is left');
 }
 console.log('PASS: the shaft has a way through every gate, the weather arrives in order, it can be climbed on fuel, ledges hold, and the ending rolls');
 })().catch(e=>{console.error(e);process.exit(1)});
+
