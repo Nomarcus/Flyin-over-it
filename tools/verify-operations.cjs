@@ -11,23 +11,30 @@ code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={operations,OP_START,getOps:()
 
 
 const dt=1/120;
-function pin(x,y){const h=a.get().heli;h.x=x;h.y=y;h.vx=h.vy=h.angle=h.av=0;h.landed=false;h.ropeNodes=[];h.rope=0;return h;}
+function pin(x,y){const h=a.get().heli;h.x=x;h.y=y;h.vx=h.vy=h.angle=h.av=0;h.landed=false;h.ropeNodes=[];h.ropeMount=null;h.rope=0;return h;}
 function ropeSeconds(s){for(let i=0;i<s*120;i++)a.updateWinch(dt);}
 function scoop(){const o=a.getOps(),l=o.lakes[0],h=pin(l.x+l.w/2,l.y-155);a.keys.KeyE=true;ropeSeconds(5);assert(o.water>99,'Skopa fylls genom repets kontakt med sjön: '+o.water);a.keys.KeyE=false;ropeSeconds(2);return h;}
 function extinguish(f){const h=pin(f.x,f.y-210);a.keys.KeyE=false;ropeSeconds(2);a.toggleWater();for(let i=0;i<5*120;i++){a.updateWinch(dt);a.updateOperation(dt);}assert(f.out,'Ballistiskt vatten släcker branden vid '+f.x+' (kvar '+f.left+')');}
 function deliverCargo(){const c=a.get().cargo;pin(c.x,c.y-140);a.keys.KeyE=true;ropeSeconds(3);assert.equal(c.status,'attached','Generator kopplas med kroken');a.keys.KeyE=false;ropeSeconds(2);pin(c.to,a.ground(c.to)-150);a.keys.KeyE=true;ropeSeconds(3);a.keys.KeyE=false;a.updateOperation(dt);assert.equal(c.status,'delivered','Generator sänks på sin platta');}
 function rescue(p){pin(p.x,p.y-145);a.keys.KeyE=true;ropeSeconds(3);assert.equal(p.status,'attached','Vinschen fångar personen');a.keys.KeyE=false;ropeSeconds(3);assert.equal(p.status,'aboard','Person hissas ombord');}
-assert.equal(a.operations.length,6);a.selectMissions();assert.equal(nodes.missionList.children.length,6);assert(!nodes.missionList.children.some(b=>/LOST VALLEY/.test(b.innerHTML)));assert(a.operations.every((l,i)=>!i||l.length>a.operations[i-1].length));
-for(let i=0;i<6;i++){
+assert.equal(a.operations.length,7);a.selectMissions();assert.equal(nodes.missionList.children.length,7);assert(!nodes.missionList.children.some(b=>/LOST VALLEY/.test(b.innerHTML)));assert(a.operations.every((l,i)=>!i||l.length>a.operations[i-1].length));
+for(let i=0;i<a.operations.length;i++){
  start(a.OP_START+i);const st=a.get(),o=a.getOps();assert(!a.ready());assert.equal(st.enemies.length,0);assert(!st.boss);assert(st.L.ops);assert(st.heli.landed);a.render();
  if(st.L.gate){assert(st.people.every(p=>p.status==='sheltered'));const p=st.people[0];pin(p.x,p.y-145);a.keys.KeyE=true;ropeSeconds(3);assert.equal(p.status,'sheltered','Räddning öppnas först när platsen är säker');a.keys.KeyE=false;}
  for(const f of o.fires){scoop();extinguish(f);}
  if(st.cargo)deliverCargo();assert(st.people.every(p=>p.status==='waiting'));
  for(const p of st.people)rescue(p);
  assert.equal(st.heli.carrying,st.people.length);assert(st.people.every(p=>p.status==='aboard'));assert(o.fires.every(f=>f.out));assert(!o.bucket);
- const h=st.heli;h.x=390;h.y=a.gearSupport();h.vx=h.vy=h.angle=h.av=0;h.landed=true;a.updateBase(2);assert.equal(a.get().mode,'debrief');assert(a.ready());assert(a.get().save.results[a.OP_START+i]);assert(nodes.modalActions.children.some(b=>b.textContent===(i===5?'MISSIONS':'NEXT MISSION')));
+ const h=st.heli;h.x=390;h.y=a.gearSupport();h.vx=h.vy=h.angle=h.av=0;h.landed=true;a.updateBase(2);assert.equal(a.get().mode,'debrief');assert(a.ready());assert(a.get().save.results[a.OP_START+i]);assert(nodes.modalActions.children.some(b=>b.textContent===(i===a.operations.length-1?'MISSIONS':'NEXT MISSION')));
  console.log('PASS: '+st.L.name+' – actual winch, cargo/water gates, return and result');
 }
+// Summit uses the existing winch and return gate at genuinely high world coordinates.
+start(a.OP_START+6);const summit=a.get().L;assert(a.ground(390)-a.ground(summit.cargo.to)>4800);
+for(const x of summit.fieldPads){assert.equal(a.ground(x-65),a.ground(x+65));const h=pin(x,a.ground(x)-30.8);h.landed=true;h.fuel=20;h.hp=70;a.updateOperation(2);assert(h.fuel>50&&h.hp>80);}
+deliverCargo();assert.equal(a.get().mode,'playing','Summit delivery alone does not finish the return journey');assert.equal(a.operationTarget().x,390);
+const high=pin(summit.cargo.to,a.ground(summit.cargo.to)-150);a.set({camera:high.x-500,cameraY:high.y-300});a.render();fs.writeFileSync('/tmp/summit-operation.png',nodes.game.toBuffer('image/png'));
+a.keys.KeyW=true;step(.5);assert(high.y<-4200&&Number.isFinite(a.get().cameraY),'No artificial altitude ceiling');a.keys.KeyW=false;
+console.log('PASS: 2165m summit, three flat service camps, delivery requires descent, high-altitude rendering and flight');
 // Water is finite, misses cost water, and scenery blocks its swept trajectory.
 start(a.OP_START+1);let o=a.getOps(),f=o.fires[0];scoop();pin(f.x+210,f.y-210);ropeSeconds(2);a.toggleWater();for(let i=0;i<600;i++)a.updateOperation(dt);assert.equal(f.left,f.max);assert.equal(o.water,0);a.toggleWater();assert(!o.dropping);
 scoop();pin(f.x,f.y-220);ropeSeconds(2);const barrier={x:f.x-80,y:f.y-90,w:160,h:25,type:'roof',drip:0};a.getObstacles().push(barrier);a.toggleWater();for(let i=0;i<600;i++)a.updateOperation(dt);assert.equal(f.left,f.max,'Rock intercepts water');a.getObstacles().pop();
@@ -39,5 +46,5 @@ assert(climb(100)>climb(0)+8,'Water mass changes lift rather than being cosmetic
 start(a.OP_START+3);const person=a.get().people[1],h=pin(person.x,person.y-145);h.collective=315;h.hoverY=h.y;a.set({hoverMode:true});a.keys.KeyE=true;step(2.5);assert.equal(person.status,'attached');a.keys.KeyE=false;step(2.8);assert.equal(person.status,'aboard');assert(h.hp>90,'Cave offers real rotor clearance');
 // Render the new content using the same native canvas as the collision tests.
 start(a.OP_START+1);scoop();f=a.getOps().fires[0];pin(f.x,f.y-220);ropeSeconds(2);a.toggleWater();for(let i=0;i<70;i++){a.updateWinch(dt);a.updateOperation(dt);}const v=a.get();a.set({camera:f.x-v.vw*.55,cameraY:f.y-v.vh*.78});a.render();fs.writeFileSync('/tmp/fire-operation.png',nodes.game.toBuffer('image/png'));
-console.log('PASS: six ordered missions, real scooping and ballistic drops, misses, rock interception, reset, pause, suspended mass and cave clearance');
+console.log('PASS: seven ordered missions, real scooping and ballistic drops, misses, rock interception, reset, pause, suspended mass and cave clearance');
 })().catch(e=>{console.error(e);process.exit(1)});

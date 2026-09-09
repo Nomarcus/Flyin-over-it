@@ -1,7 +1,7 @@
 {
   "name": "flyin-over-it",
   "version": "1.0.0",
-  "description": "Six varied helicopter rescue, cargo and firefighting missions with physical touch flight.",
+  "description": "Seven varied helicopter rescue, cargo and firefighting missions with physical touch flight.",
   "private": true,
   "scripts": {
     "test": "node tools/verify-touch.cjs && node tools/verify-graphics.cjs && node tools/verify-collisions.cjs && node tools/verify-operations.cjs && node tools/verify-water-fire.cjs"
