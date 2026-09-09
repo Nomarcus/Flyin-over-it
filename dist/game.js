@@ -354,7 +354,7 @@ function updateBucketWinch(dt){
  const h=heli,mount=winchMount();if(!h.ropeTarget)h.ropeTarget={kind:'bucket',ref:{}};
  const length=keys.KeyE?185:58;h.rope+=clamp(length-h.rope,-76*dt,90*dt);h.rope=clamp(h.rope,0,185);simulateRope(dt,mount);
  h.ropeTarget.ref.x=h.hookX;h.ropeTarget.ref.y=h.hookY+8;
- const lake=ops.lakes.find(l=>h.hookX>l.x+12&&h.hookX<l.x+l.w-12&&h.hookY+17>=l.y&&h.hookY<l.y+45);
+ const lake=ops.lakes.find(l=>{const b=lakeBounds(l);return h.hookX>b.left+4&&h.hookX<b.right-4&&h.hookY+17>=l.y&&h.hookY<ground(h.hookX);});
  if(lake&&!ops.dropping&&Math.abs(h.vx)<65&&Math.abs(h.vy)<65){ops.water=Math.min(100,ops.water+dt*50);if(ops.water>=99&&!ops.fillNotice){ops.fillNotice=true;radio('Bucket full. Raise it and fly to the fire. Use Space or DROP WATER to release.',5);AudioState.sfx('attach');}}
  if(ops.water<70)ops.fillNotice=false;
 }
@@ -384,7 +384,7 @@ function updateOperation(dt){
  }
  ops.drops=ops.drops.filter(d=>d.life>0);
  for(const f of ops.fires){if(!f.out&&Math.abs(heli.x-f.x)<75&&heli.y>f.y-65){hitHeli(1.2);if(!ops.heatNotice){radio('Heat near the ground. Drop water from higher up.',3);ops.heatNotice=4;}}}
- for(const l of ops.lakes)if(heli.x>l.x&&heli.x<l.x+l.w&&heli.y+15>l.y){hitHeli(2);if(!ops.heatNotice){radio('Only the bucket belongs in the lake. Keep the helicopter above the water.',4);ops.heatNotice=4;}}
+ for(const l of ops.lakes)if(heli.x>lakeBounds(l).left&&heli.x<lakeBounds(l).right&&heli.y+15>l.y){hitHeli(2);if(!ops.heatNotice){radio('Only the bucket belongs in the lake. Keep the helicopter above the water.',4);ops.heatNotice=4;}}
  const fireDone=ops.fires.every(f=>f.out);
  if(ops.bucket&&fireDone){ops.bucket=false;ops.water=0;ops.dropping=false;heli.ropeTarget=null;keys.KeyE=false;radio(people.length?'Fires extinguished. Rescue hook ready — collect the residents.':'All fires extinguished. Return and land at base.',6);}
  if(!ops.unlocked&&((L.gate==='fire'&&fireDone)||(L.gate==='cargo'&&cargo?.status==='delivered'))){ops.unlocked=true;people.forEach(p=>{if(p.status==='sheltered')p.status='waiting';});if(L.gate==='cargo')radio('Power and heating restored. The crew is leaving shelter — collect them.',5);}
@@ -414,25 +414,55 @@ function selectMissions(){
  mode='select';$('menu').hidden=true;showModal('NORDIC AIR RESCUE','Six calls. Your helicopter.','<div class="missionlist operations" id="missionList"></div><p>All six are open. Fly at your own pace; improve your precision and star rating on each return.</p>',[{text:'MAIN MENU',run:toMenu}]);
  const list=$('missionList');operations.forEach((l,i)=>{const b=document.createElement('button'),r=save.results[OP_START+i];b.className='operationCard';b.innerHTML='<small>0'+(i+1)+' · '+l.tag+'</small><b>'+l.name+'</b><span>'+l.region+' · '+(l.length*.45/1000).toFixed(1)+' km across</span><em>'+(r?'★'.repeat(r.stars)+'☆'.repeat(3-r.stars)+' · '+fmt(r.score)+' points':'MISSIONS →')+'</em>';b.onclick=()=>loadLevel(OP_START+i);list.append(b);});
 }
+// Water follows the sampled terrain; shore positions are interpolated at the still-water level.
+const lakeShoreCache=new WeakMap();
+function lakeBounds(l){
+ const cached=lakeShoreCache.get(l);if(cached?.terrain===terrain)return cached.bounds;
+ const shore=(from,dir)=>{let x=from,y=ground(x);for(let i=0;i<300;i++){const nx=clamp(x+dir*4,0,L.length),ny=ground(nx);if(ny<=l.y){let wet=x,dry=nx;for(let k=0;k<16;k++){const mid=(wet+dry)/2;if(ground(mid)>l.y)wet=mid;else dry=mid;}return(wet+dry)/2;}if(nx===x)return x;x=nx;y=ny;}return x;};
+ const bounds={left:shore(l.x,-1),right:shore(l.x+l.w,1)};lakeShoreCache.set(l,{terrain,bounds});return bounds;
+}
+function drawLake(l){
+ const {left,right}=lakeBounds(l);if(right<camera-20||left>camera+vw+20)return;
+ const a=Math.max(left,camera-20),b=Math.min(right,camera+vw+20),t=reduceMotion?0:visualTime;
+ const wave=x=>Math.sin(x*.065-t*2)*1.1+Math.sin(x*.14+t*1.3)*.45;
+ ctx.save();ctx.beginPath();ctx.moveTo(a,l.y-3);ctx.lineTo(b,l.y-3);ctx.lineTo(b,ground(b));for(let x=b-4;x>a;x-=4)ctx.lineTo(x,ground(x));ctx.lineTo(a,ground(a));ctx.closePath();ctx.clip();
+ const g=ctx.createLinearGradient(0,l.y,0,l.y+55);g.addColorStop(0,'#8bc5c6');g.addColorStop(.13,'#429caa');g.addColorStop(.55,'#226f85');g.addColorStop(1,'#103e59');
+ ctx.beginPath();ctx.moveTo(a,l.y+wave(a));for(let x=a+4;x<b;x+=4)ctx.lineTo(x,l.y+wave(x));ctx.lineTo(b,l.y+wave(b));ctx.lineTo(b,l.y+200);ctx.lineTo(a,l.y+200);ctx.closePath();ctx.fillStyle=g;ctx.fill();
+ // Drifting reflections and submerged light bands, clipped against the actual lake bed.
+ for(let row=0;row<5;row++){for(let x=Math.floor(a/54)*54;x<b;x+=54){const phase=t*(row%2?7:-5),xx=x+Math.sin(x*.02+phase*.07)*9,yy=l.y+4+row*7+Math.sin(x*.05+t)*1.5;line(xx,yy,xx+18+row*3,yy+Math.sin(t+x)*.7,row<2?'#daf0df55':'#82d4ce20',row<2?.8:1.3);}}
+ ctx.beginPath();for(let x=a;x<=b;x+=3){const y=l.y+wave(x);x===a?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.strokeStyle='#d8eee5bb';ctx.lineWidth=1.2;ctx.stroke();
+ const ripple=(x,amount)=>{for(let i=0;i<3;i++){const phase=(t*.7+i/3)%1;ctx.beginPath();ctx.ellipse(x,l.y+2,5+phase*amount,1+phase*2.5,0,0,TAU);ctx.strokeStyle='rgba(215,247,239,'+((1-phase)*.5)+')';ctx.lineWidth=.8;ctx.stroke();}};
+ if(ops.bucket&&heli.hookX>left&&heli.hookX<right&&heli.hookY+20>l.y&&heli.hookY<l.y+50)ripple(heli.hookX,36);
+ if(heli.x>left&&heli.x<right&&heli.y>l.y-170)ripple(heli.x,75*heli.spool);
+ ctx.restore();
+ for(const x of [left+7,right-7]){line(x,l.y+1,x+(x<l.x?12:-12),l.y+1,'#d5e4cd88',1.6);}
+ for(const x of [l.x+24,l.x+l.w-24]){const bob=wave(x)*.6;line(x,l.y+bob,x,l.y-16+bob,'#c3d5cd',1.4);ellipse(x,l.y+bob,5,2.5,'#ed983e');poly([[x,l.y-16+bob],[x+10,l.y-12+bob],[x,l.y-9+bob]],'#e4e5c4');}
+}
+function drawFire(f){
+ if(f.x<camera-210||f.x>camera+vw+210)return;
+ const power=clamp(f.left/f.max,0,1),t=reduceMotion?0:visualTime,wet=1-power;
+ if(L.gate==='fire')building(f.x-37,f.y,74,40,'#876f52');
+ const ash=[];for(let x=f.x-75;x<=f.x+75;x+=5)ash.push([x,ground(x)-.5]);for(let x=f.x+75;x>=f.x-75;x-=5)ash.push([x,ground(x)+6]);poly(ash,'#202d2b99');
+ for(let j=0;j<6;j++){const x=f.x-52+j*20,y=ground(x);line(x-7,y-1,x+10,y-9,'#302d2b',4);line(x-6,y-2,x+7,y-8,f.out?'#53696b':'#a14d26',1.4);}
+ if(f.out){ellipse(f.x,f.y,60,5,'#579eab35');return;}
+ // Smoke rises in separate soft puffs; the plume leans with the existing wind.
+ for(let j=0;j<(coarse?7:11);j++){const phase=(t*.19+j*.117)%1,r=12+phase*35,xx=f.x+Math.sin(j*3.4)*29+wind*phase*2.5,yy=f.y-24-phase*(110+power*70);const g=ctx.createRadialGradient(xx,yy,0,xx,yy,r);g.addColorStop(0,'rgba(42,46,49,'+((1-phase)*(.18+power*.19))+')');g.addColorStop(.65,'rgba(66,67,64,'+((1-phase)*.1)+')');g.addColorStop(1,'#3b454b00');ctx.fillStyle=g;ctx.fillRect(xx-r,yy-r,r*2,r*2);}
+ glow(f.x,f.y-17,65+power*45,'#ff892b25');for(let j=0;j<9;j++){const x=f.x-55+j*14;glow(x,ground(x)-9,12+power*9,'#ff8d2550');}
+ // Three curved flame layers, each with its own phase and tapered tip.
+ for(let j=0;j<11;j++){const seed=hash(f.x+j*19),x=f.x-61+j*12,cycle=(t*(1.3+seed*.5)+seed*8)%1,h=(20+seed*47)*Math.sqrt(power)*(.67+Math.sin(cycle*Math.PI)*.4),lean=wind*.35+Math.sin(t*5+j*2)*11,w=(6+seed*5)*(.5+power*.5);
+  for(let layer=0;layer<3;layer++){const hh=h*(1-layer*.29),ww=w*(1-layer*.23),yy=ground(x)-layer*.8,twist=Math.sin(t*6+j*4+layer)*ww*.8;ctx.beginPath();ctx.moveTo(x-ww,yy);ctx.bezierCurveTo(x-ww*1.6,yy-hh*.28,x+lean-ww*.7+twist,yy-hh*.65,x+lean+twist,yy-hh);ctx.bezierCurveTo(x+lean+ww*.4-twist,yy-hh*.62,x+ww*1.4,yy-hh*.23,x+ww,yy);ctx.closePath();const g=ctx.createLinearGradient(0,yy-hh,0,yy);g.addColorStop(0,['#ee652408','#ffc35118','#fff0b640'][layer]);g.addColorStop(.3,['#ed612877','#ffad3999','#ffe69cb0'][layer]);g.addColorStop(1,['#ce54237a','#f98426b5','#fff2b8cc'][layer]);ctx.fillStyle=g;ctx.fill();}
+ }
+ for(let j=0;j<(coarse?7:13);j++){const phase=(t*(.5+hash(j)*.4)+j*.17)%1,x=f.x+(hash(j+f.x)-.5)*105+wind*phase,yy=f.y-12-phase*(45+power*70);line(x,yy,x+Math.sin(j+t)*2,yy+2.5,'rgba(255,190,90,'+((1-phase)*power*.7)+')',.9);}
+ // Water hits already reduce power; pale steam replaces flame without changing the damage rules.
+ if(wet>.05)for(let j=0;j<4;j++){const phase=(t*.4+j*.25)%1;glow(f.x+Math.sin(j*4)*40+wind*phase,f.y-12-phase*65,10+phase*19,'rgba(211,231,221,'+(wet*(1-phase)*.16)+')');}
+}
+
 function drawOperation(){
  if(!ops)return;
- for(const l of ops.lakes){if(l.x+l.w<camera||l.x>camera+vw)continue;
-  const g=ctx.createLinearGradient(0,l.y,0,l.y+44);g.addColorStop(0,'#6cd5ce');g.addColorStop(1,'#164d66');poly([[l.x,l.y],[l.x+l.w,l.y],[l.x+l.w,ground(l.x+l.w)],[l.x,ground(l.x)]],g);line(l.x,l.y,l.x+l.w,l.y,'#d6fff0',2);
-  for(const x of [l.x+24,l.x+l.w-24]){line(x,l.y,x,l.y-19,'#d8f1da',2);ellipse(x,l.y,6,3,'#e49b4a');poly([[x,l.y-19],[x+12,l.y-14],[x,l.y-10]],'#d9f9d7');}
-  for(let x=l.x+12;x<l.x+l.w-8;x+=24){const offset=Math.sin(visualTime*1.6+x*.06)*5;line(x+offset,l.y+7+Math.sin(x)*4,x+14+offset,l.y+7+Math.sin(x)*4,'#c4ffe563',1);}
-  if(ops.bucket&&Math.abs(heli.hookX-(l.x+l.w/2))<l.w/2){ctx.save();ctx.strokeStyle='#d6fff199';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(heli.hookX,l.y+2,24+Math.sin(visualTime*5)*4,4,0,0,TAU);ctx.stroke();ctx.restore();}
- }
+ for(const l of ops.lakes)drawLake(l);
  if(L.opsIndex===2){const x=cargo.to+185,y=ground(x);ctx.save();ctx.globalAlpha=.68;poly([[x-17,y],[x+17,y],[x+12,y-104],[x-12,y-104]],'#c9d8ce');poly([[x+5,y],[x+17,y],[x+12,y-104],[x+4,y-104]],'#576e7a');ctx.fillStyle='#516779';ctx.fillRect(x-13,y-83,26,12);ctx.fillRect(x-13,y-46,26,12);poly([[x-16,y-106],[x+16,y-106],[x+12,y-119],[x-12,y-119]],'#20394b');const lit=cargo.status==='delivered';ctx.fillStyle=lit?'#ffecab':'#374955';ctx.fillRect(x-10,y-114,20,7);if(lit){glow(x,y-111,68,'#ffe39945');poly([[x,y-111],[x+220,y-151+Math.sin(visualTime)*20],[x+220,y-81+Math.sin(visualTime)*20]],'#fff1ab10');}ctx.restore();}
  for(const x of L.fieldPads||[])if(x>camera-120&&x<camera+vw+120){landingPad(x,160);line(x-70,ground(x)-3,x-70,ground(x)-40,'#94b5ad',2);ellipse(x-70,ground(x)-42,3,3,'#a4ffe0');}
- for(const f of ops.fires){if(f.x<camera-180||f.x>camera+vw+180)continue;const strength=f.left/f.max;
-  if(L.gate==='fire')building(f.x-37,f.y,74,40,'#876f52');
-  ellipse(f.x,f.y+2,76,10,'#152833aa');
-  for(let j=0;j<5;j++){const x=f.x-48+j*23;line(x-6,f.y-2,x+9,f.y-18,'#493d33',5);line(x,f.y-4,x+13,f.y-8,'#242b2e',3);}
-  if(f.out){ellipse(f.x,f.y,60,5,'#69c8bc38');continue;}
-  glow(f.x,f.y-25,115,'#ff963537');
-  for(let j=0;j<9;j++){const x=f.x-62+j*15,wave=Math.sin(visualTime*7+j*2.4),height=(32+hash(f.x+j)*40)*(.45+.55*strength);ctx.beginPath();ctx.moveTo(x-10,f.y);ctx.quadraticCurveTo(x-20,f.y-height*.5,x+wave*9,f.y-height);ctx.quadraticCurveTo(x+22,f.y-height*.35,x+10,f.y);ctx.closePath();ctx.fillStyle=j%2?'#f07b27dc':'#ffb843e8';ctx.fill();poly([[x-5,f.y],[x+wave*4,f.y-height*.6],[x+6,f.y]],'#ffe3a0b0');}
-  for(let j=0;j<4;j++){const t=(visualTime*.25+j*.25)%1;glow(f.x+Math.sin(j*2)*22+wind*t,f.y-40-t*110,18+t*28,'#35444b35');}
- }
+ for(const f of ops.fires)drawFire(f);
  for(const d of ops.drops){line(d.x-d.vx*.025,d.y-d.vy*.025,d.x,d.y,'#c0f4edbb',3);ellipse(d.x,d.y,2.7,4.5,'#e1fff6c9');}
 }
 function drawBucket(){
