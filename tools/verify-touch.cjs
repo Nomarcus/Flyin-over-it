@@ -470,6 +470,11 @@ console.log('PASS: two-hand lift, one-hand tilt, released descent, directional s
 a.loadLevel(10);a.loadLevel(8,false);nodes.lostBtn.onclick();assert.equal(a.get().level,10,'Continue returns to the selected operation');
 assert.equal(a.get().save.lastOperation,10,'Operation selection persists');
 console.log('PASS: Continue restores the selected operation');
+
+a.loadLevel(8,false);a.fixedUpdate(1/120);const titleScene=a.get();
+assert(titleScene.heli.y-titleScene.cameraY>60&&titleScene.heli.y-titleScene.cameraY<titleScene.vh-70,'Title helicopter stays within the zoomed view');
+assert(titleScene.heli.x-titleScene.camera>titleScene.vw*.6,'Title helicopter clears the menu');
+console.log('PASS: title helicopter remains visible at the existing zoom');
 })().catch(e=>{console.error(e);process.exit(1)});
 
 
