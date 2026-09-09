@@ -730,12 +730,12 @@ function heliBody(x,y,a,dir,t=0,isBoss=false){
   face([[x2,y1,z1],[x2,y1,z2],[x2,y2,z2],[x2,y2,z1]],top||color);
  }
  function tube(a,b,r=1.8){const dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2],len=Math.hypot(dx,dy,dz)||1,d=[dx/len,dy/len,dz/len],ref=Math.abs(d[1])<.9?[0,1,0]:[0,0,1],u=[d[1]*ref[2]-d[2]*ref[1],d[2]*ref[0]-d[0]*ref[2],d[0]*ref[1]-d[1]*ref[0]],ul=Math.hypot(...u)||1;for(let j=0;j<3;j++)u[j]/=ul;const v=[d[1]*u[2]-d[2]*u[1],d[2]*u[0]-d[0]*u[2],d[0]*u[1]-d[1]*u[0]],ra=[],rb=[];for(let j=0;j<8;j++){const ang=j*TAU/8,off=u.map((q,k)=>r*(q*Math.cos(ang)+v[k]*Math.sin(ang)));ra.push(a.map((q,k)=>q+off[k]));rb.push(b.map((q,k)=>q+off[k]));}for(let j=0;j<8;j++)face([ra[j],rb[j],rb[(j+1)%8],ra[(j+1)%8]],['#d1dad0','#a1b7b4','#6b898e','#385c6b','#244554','#365968','#64868d','#b7c9c0'][j]);face(ra,'#5c7f87');face(rb,'#6a8c91');}
- const hit=isBoss?boss?.flash>0:heli.hitCd>0,cream=hit?'#efe2bd':isBoss?'#637780':'#f6e9cc',dark=isBoss?'#3c515d':'#b14b24',top=isBoss?'#87989d':'#fff6de',stripe=isBoss?'#8d795f':'#ee6429';
+ const hit=isBoss?boss?.flash>0:heli.hitCd>0,cream=hit?'#efe2bd':isBoss?'#637780':'#edf3f6',dark=isBoss?'#3c515d':'#b14b24',top=isBoss?'#87989d':'#ffffff',stripe=isBoss?'#8d795f':'#ee6429';
  // Faceted cross-sections form a true volume, with cabin, rounded nose and a tapered tail.
- const rings=[[-42,-12,9,9],[-29,-22,18,19],[10,-24,19,21],[31,-15,17,18],[48,-2,11,11],[54,6,9,5]];
+ const rings=[[-42,-12,9,9],[-36,-18,15,15],[-29,-22,18,19],[-14,-24,19,21],[10,-24,19,21],[23,-20,19,20],[31,-15,17,18],[40,-8,15,15],[48,-2,11,11],[54,6,9,5]];
  function ring(r){const [xx,yt,yb,w]=r;return[[xx,yt,-w*.55],[xx,yt,w*.55],[xx,yt+6,w],[xx,yb-5,w],[xx,yb,w*.6],[xx,yb,-w*.6],[xx,yb-5,-w],[xx,yt+6,-w]];}
- for(let i=0;i<rings.length-1;i++){const r=ring(rings[i]),n=ring(rings[i+1]);for(let j=0;j<8;j++){const k=(j+1)%8;face([r[j],n[j],n[k],r[k]],[top,cream,cream,dark,'#392e2e','#743d30',dark,top][j]);}}
- face(ring(rings[0]),dark);face(ring(rings[rings.length-1]),dark);
+ for(let i=0;i<rings.length-1;i++){const r=ring(rings[i]),n=ring(rings[i+1]);for(let j=0;j<8;j++){const k=(j+1)%8;face([r[j],n[j],n[k],r[k]],[top,cream,cream,stripe,'#653b30',dark,cream,top][j]);}}
+ face(ring(rings[0]),dark);face(ring(rings[rings.length-1]),cream);
  // Both side doors and glass exist in the model, so a turn reveals the far side naturally.
  for(const sign of [-1,1]){
   const z=20*sign;
@@ -768,21 +768,21 @@ function heliBody(x,y,a,dir,t=0,isBoss=false){
   const rail=[[-43,25,sign*25],[-37,29,sign*25],[38,29,sign*25],[47,25,sign*25],[51,20,sign*25]];
   for(let k=0;k<rail.length-1;k++)gearTube(rail[k],rail[k+1],1.8);
   gearBox(-27,26.3,sign*23.5,-24,29.4,sign*26.5,'#476977','#aabeb7');
-  gearBox(26,26.3,sign*23.5,29,29.4,sign*26.5,'#476977','#aabeb7');drawingGear=false;
+  gearBox(26,26.3,sign*23.5,29,29.4,sign*26.5,'#476977','#aabeb7');for(const xx of [-24,25]){gearBox(xx-1.8,20,sign*19,xx+1.8,23,sign*22,'#eef4f7','#ffffff','#68808d');}drawingGear=false;
 
  }
  for(const sign of [-1,1]){for(const xx of [-24,-16,-8,6,14]){const yy=8,zz=21.3*sign;face([[xx,yy,zz],[xx+1,yy,zz],[xx+1,yy+1,zz],[xx,yy+1,zz]],'#e6e4be');}box(-34,-10,18*sign,-32,6,18.5*sign,'#476772','#75998f');}
  // Tapered tail boom, stabilizers, engine housing and exhaust.
  face([[-39,-11,-7],[-101,-17,-3],[-101,-10,3],[-39,7,8]],dark);
- face([[-39,-11,7],[-101,-17,3],[-101,-10,3],[-39,7,8]],'#d46a37');
+ face([[-39,-11,7],[-101,-17,3],[-101,-10,3],[-39,7,8]],'#f06a28');
  face([[-39,-11,-7],[-101,-17,-3],[-101,-17,3],[-39,-11,7]],top);
  box(-101,-18,-22,-86,-15,22,dark,top);box(-103,-44,-2,-96,-10,2,'#ed763d',top,dark);
- box(-22,-29,-12,12,-23,12,'#728e85',top);box(-19,-35,-8,5,-29,8,'#91a294','#d7d8b9');
+ box(-22,-29,-12,12,-23,12,'#c3d3da',top);box(-19,-35,-8,5,-29,8,'#a5bbc5','#eff4f5');
  box(-26,-30,-6,-18,-25,6,'#263f4b','#596f70');box(-3,-47,-2,1,-34,2,'#6d8586','#d0d5b5');
  // Barrel shares its exact origin with weapon().
  
  const rotor=isBoss?visualTime*55:heli.rotor;
- if(isBoss||mode!=='wreck')for(let blade=0;blade<2;blade++){const ang=rotor+blade*Math.PI,c=Math.cos(ang),sn=Math.sin(ang),r1=5,r2=91,w=2.4;face([[c*r1-sn*w,-47,sn*r1+c*w],[c*r2-sn*w,-47,sn*r2+c*w],[c*r2+sn*w,-47,sn*r2-c*w],[c*r1+sn*w,-47,sn*r1-c*w]],'#152838ec');}
+ if(isBoss||mode!=='wreck')for(let blade=0;blade<4;blade++){const ang=rotor+blade*Math.PI/2,c=Math.cos(ang),sn=Math.sin(ang),r1=5,r2=91,w=2.4;face([[c*r1-sn*w,-47,sn*r1+c*w],[c*r2-sn*w,-47,sn*r2+c*w],[c*r2+sn*w,-47,sn*r2-c*w],[c*r1+sn*w,-47,sn*r1-c*w]],'#dbe7eded');face([[c*79-sn*w,-47,sn*79+c*w],[c*r2-sn*w,-47,sn*r2+c*w],[c*r2+sn*w,-47,sn*r2-c*w],[c*79+sn*w,-47,sn*79-c*w]],'#ff6b24');}
  // Painter sorting keeps roof, skids, windows and blades in the correct depth order.
  faces.sort((a,b)=>a.z-b.z);for(const f of faces){const pts=f.pp.map(p=>[p.x,p.y]);poly(pts,f.color);if(f.color.length===7){const ys=f.pp.map(p=>p.y),topY=Math.min(...ys),bottomY=Math.max(...ys);if(bottomY-topY>4){const light=ctx.createLinearGradient(-30,topY,45,bottomY);light.addColorStop(0,'#fff7df40');light.addColorStop(.5,'#fff2c500');light.addColorStop(1,'#071b3a50');poly(pts,light);}}}
  // Surface decals are projected onto the visible cabin after the volume pass.
@@ -790,21 +790,35 @@ function heliBody(x,y,a,dir,t=0,isBoss=false){
  if(!isBoss&&Math.abs(Math.cos(yaw))>.35){
   const z=(Math.cos(yaw)>0?1:-1)*21.7;
   const decal=(v,c)=>poly(v.map(([px,py])=>{const q=point([px,py,z]);return[q.x,q.y]}),c);
-  decal([[-26,0],[-4,0],[-4,12],[-26,12]],'#ed6029');
-  decal([[-19,1],[-15,1],[-15,11],[-19,11]],'#fff5dd');
-  decal([[-23,4],[-11,4],[-11,8],[-23,8]],'#fff5dd');
-  for(const xx of [-28,-1]){const q=point([xx,-17,z]),r=point([xx,13,z]);line(q.x,q.y,r.x,r.y,'#233f4a88',.7);}
-  const q=point([-9,-1,z]),r=point([-4,-1,z]);line(q.x,q.y,r.x,r.y,'#e9efdc',1.2);
+  // Reference-led SAR cabin: broad glazing, orange rescue door and enamel panels.
+  const panel=(v,fill,edge='#425e6e',width=.55)=>{const pts=v.map(([px,py])=>{const q=point([px,py,z]);return[q.x,q.y]});poly(pts,fill);ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.strokeStyle=edge;ctx.lineWidth=width;ctx.stroke();};
+  const glass=ctx.createLinearGradient(0,-22,15,2);glass.addColorStop(0,'#9dd9ef');glass.addColorStop(.22,'#2878a3');glass.addColorStop(.52,'#153952');glass.addColorStop(1,'#081b2e');
+  panel([[-30,-20],[-1,-22],[1,15],[-30,14]],'#f16a2e','#8f391f',.8);
+  panel([[-27,-17],[-4,-19],[-3,-4],[-27,-3]],glass,'#e5eef1',1);
+  panel([[4,-20],[20,-17],[27,-4],[5,-3]],glass,'#ecf4f5',1.2);
+  // Fine mullions and bright diagonal reflections emphasize curved blue glass.
+  decal([[-17,-18],[-16,-18],[-16,-3],[-17,-3]],'#173146');
+  decal([[-26,-16],[-22,-16],[-11,-4],[-14,-4]],'#b7eaff47');
+  decal([[6,-18],[9,-18],[20,-5],[17,-5]],'#dbf7ff66');
+  panel([[-27,0],[-4,0],[-4,13],[-27,13]],'#ce391d','#fff3e5',.7);
+  decal([[-19,2],[-15,2],[-15,11],[-19,11]],'#ffffff');
+  decal([[-23,5],[-11,5],[-11,8],[-23,8]],'#ffffff');
+  const q=point([-8,-1,z]),r=point([-3,-1,z]);line(q.x,q.y,r.x,r.y,'#dcebf1',1.1);
+  for(const [xx,yy] of [[-29,-18],[-29,11],[-2,-20],[-2,12],[7,12],[26,8]]){const p=point([xx,yy,z]);ellipse(p.x,p.y,.6,.6,'#526b7a');ellipse(p.x-.15,p.y-.2,.22,.22,'#ffffff');}
+  panel([[-39,-10],[-34,-12],[-33,2],[-38,3]],'#10344e','#cad8de',.7);
+  // Raised door hinges and a recessed step retain legibility at game scale.
+  for(const yy of [-11,8])panel([[-31,yy],[-28,yy],[-28,yy+3],[-31,yy+3]],'#dce5e9');
+
  }
  if(!isBoss)drawDents(dir);
  const bent=isBoss?0:(heli.rotorHurt||0);
  const disk=[];for(let j=0;j<=40;j++){const ang=j/40*TAU,wob=1-bent*.09*Math.abs(Math.sin(ang*2+rotor*.3));
   const p=point([Math.cos(ang)*92*wob,-47+bent*Math.sin(ang*2+rotor*.3)*3.5,Math.sin(ang)*92*wob]);disk.push([p.x,p.y]);}
  if(isBoss||mode!=='wreck')poly(disk,bent>.25?'#e1efdf07':'#e1efdf0b');if(!reduceMotion&&(isBoss||mode!=='wreck')){for(let j=0;j<3;j++){ctx.beginPath();for(let k=0;k<14;k++){const ang=rotor*.3+j*TAU/3+k*.042,p=point([Math.cos(ang)*88,-47,Math.sin(ang)*88]);k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)}ctx.strokeStyle='#dce9ce25';ctx.lineWidth=1.2;ctx.stroke();}}
- const hub=point([-1,-48,0]);ellipse(hub.x,hub.y,5,2.6,'#c9d4b8');
- const tail=point([-100,-22,4]);ctx.save();ctx.translate(tail.x,tail.y);ctx.rotate(rotor*1.9);line(-12,0,12,0,'#173947',2);line(0,-12,0,12,'#173947',2);ctx.restore();ellipse(tail.x,tail.y,13,13,'#c7ded00d');
+ const hub=point([-1,-48,0]);ellipse(hub.x,hub.y+1,6,2.7,'#142b39');ellipse(hub.x,hub.y-1,5,2.8,'#f57626');ellipse(hub.x-1,hub.y-2,2.5,.7,'#ffd29c');for(const sign of [-1,1]){const p=point([sign*5,-44,0]),q=point([sign*8,-47,0]);line(p.x,p.y,q.x,q.y,'#b5c8d3',.8);}
+ const tail=point([-100,-22,4]);ctx.save();ctx.translate(tail.x,tail.y);ctx.rotate(rotor*1.9);line(-12,0,12,0,'#e4eef3',2.4);line(0,-12,0,12,'#e4eef3',2.4);for(const sign of [-1,1]){line(sign*8,0,sign*12,0,'#ff641f',2.6);line(0,sign*8,0,sign*12,'#ff641f',2.6);}ellipse(0,0,2.4,2.4,'#183347');ctx.restore();ellipse(tail.x,tail.y,13,13,'#c7ded00d');
  const lamp=point([-26,-24,16]);ellipse(lamp.x,lamp.y,2.2,2.2,Math.sin(visualTime*4)>0?'#ed9b79':'#815e53');
- const side=point([-79,-12,Math.cos(yaw)>=0?4:-4]);if(Math.abs(Math.cos(yaw))>.65){ctx.save();ctx.translate(side.x,side.y);ctx.textAlign=dir===1?'left':'right';ctx.font='bold 5px monospace';ctx.fillStyle='#243e48';ctx.fillText(isBoss?'MK–IV':'RESCUE 07',0,0);ctx.restore();}
+ const side=point([-79,-12,Math.cos(yaw)>=0?4:-4]);if(Math.abs(Math.cos(yaw))>.65){ctx.save();ctx.translate(side.x,side.y);ctx.textAlign=dir===1?'left':'right';ctx.font='bold 5px sans-serif';ctx.fillStyle='#fff9ef';ctx.fillText(isBoss?'MK–IV':'RESCUE 07',0,0);ctx.restore();}
  ctx.restore();
 }
 function drawHeli(){if(mode==='failed')return;const h=heli,alt=ground(h.x)-h.y;ellipse(h.x,ground(h.x)+5,clamp(72-alt*.08,24,72),clamp(10-alt*.01,4,10),'#061b2550');
