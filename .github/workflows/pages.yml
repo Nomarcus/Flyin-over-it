@@ -31,8 +31,12 @@ jobs:
       - run: npm install
       - run: npm test
 
+  # Pages only accepts a deployment from the default branch, so on a feature branch this job
+  # used to fail every push and leave the run red even though the tests passed. Skipping it
+  # there means a red run means something is actually wrong.
   deploy:
     needs: test
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
