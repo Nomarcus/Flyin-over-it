@@ -7,7 +7,7 @@ const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orie
   this.addEventListener=(t,fn)=>{if(t==='error')this.fail=fn};globalThis.madeAudio.push(this);},
  testArt:{pine:await loadImage(root+'/assets/nature/pine-mature.webp'),tropical:await loadImage(root+'/assets/backgrounds/tropical-range.webp'),range:await loadImage(root+'/assets/backgrounds/alpine-range.webp'),day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
-code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,getStars:()=>stars,Music,musicForState,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,getStars:()=>stars,Music,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
 
 const emit=(id,type,pointerId,x,y=300)=>{for(const f of element(id).listeners[type]||[])f({pointerId,clientX:x,clientY:y,preventDefault(){}})};
 a.startLost(true);a.begin();
@@ -61,56 +61,88 @@ assert(/HOME/.test(nodes.modalTag.textContent),'Arriving home opens the debrief,
 }
 console.log('PASS: the long valley ends, and the ending turns');
 
-// Music. The tracks do not exist yet, so the point of this is that the game asks for the right
-// one, survives their absence, and obeys the mute button and the volume it was given.
+// Music. A record player: the title theme first, then every track that exists in turn, and
+// nothing the player does changes what is playing. The files may not all exist yet, so the
+// point is that the rotation survives their absence and obeys mute and the volume slider.
 {
  const M=a.Music;
+ M.tracks={};M.failed={};M.cur=null;M.prev=null;M.at=0;M.unlocked=false;M.gain=0;
+ globalThis.madeAudio.length=0;
  a.loadLevel(7);a.set({mode:'menu'});
- assert.equal(a.musicForState(),'title','The menu asks for the title theme');
+
+ // The needle always drops on the same track.
+ M.unlock();
+ assert.equal(M.cur,'title','The game always opens on the title theme');
+ const first=globalThis.madeAudio[0];
+ assert(/music\/title\.mp3$/.test(first.src),'from the music folder, got '+first.src);
+ assert.equal(first.loop,false,'A track does not loop; the next one follows it');
+
+ // Nothing the player does may change the record. This is the whole point of the rewrite:
+ // the old version restarted the music on every one of these transitions.
  a.begin();
  h=a.get().heli;h.x=3000;h.y=a.ground(3000)-200;
- assert.equal(a.musicForState(),'valley','The valley asks for the valley theme');
- h.x=22000;
- assert.equal(a.musicForState(),'beacon','The last stretch has its own theme');
- // Down inside a shaft, below the rim.
- const shaft=a.getStars()[0];
- h.x=shaft.x;h.y=a.ground(shaft.x)-40;
- assert.equal(a.musicForState(),'shaft','Below the rim asks for the shaft theme');
- a.set({mode:'lostDone'});
- assert.equal(a.musicForState(),'debrief','Coming home has its own theme');
+ for(let i=0;i<40;i++)M.update(1/60);
+ assert.equal(M.cur,'title','Starting a mission does not change the track');
+ h.x=22000;a.set({mode:'lostDone'});M.update(1/60);
+ assert.equal(M.cur,'title','Nor does reaching the beacon or coming home');
+ a.set({mode:'menu'});M.update(1/60);
+ assert.equal(M.cur,'title','Nor does walking back into a menu');
  a.set({mode:'playing'});
 
- // Nothing may throw while the files are missing, and a failed load must fall back.
- M.unlock();M.want('beacon');
- assert(globalThis.madeAudio.length>0,'It tried to load a track');
- const el=globalThis.madeAudio[globalThis.madeAudio.length-1];
- assert(/music\/beacon\.mp3$/.test(el.src),'from the music folder, got '+el.src);
- assert.equal(el.loop,true,'and loops it');
- M.update(1/60);
- assert(el.volume>0,'and brings it up');
- el.fail();                                   // the file is not there
- M.want('beacon');
- assert.equal(M.cur,'valley','A missing track falls back to one that exists');
- // Mute silences it and releases the stream.
+ // Only a track finishing moves the record on, and it wraps at the end.
+ const order=M.live();
+ assert.equal(order[0],'title','and the rotation starts from the title theme');
+ M.next();
+ assert.equal(M.cur,order[1],'A finished track hands over to the next one');
+ M.play(order[order.length-1]);M.next();
+ assert.equal(M.cur,order[0],'and the last track comes back round to the first');
+ // A folder with nothing in it must not spin looking for a track to play.
+ const wasFailed=M.failed;M.failed={};for(const n of order)M.failed[n]=true;
+ M.next();assert.equal(M.cur,null,'An empty music folder stops rather than looping forever');
+ M.failed=wasFailed;M.play(order[0]);
+
+ // A file that is not there leaves the rotation instead of stalling it.
+ M.play('title');
+ const el=M.tracks.title;
+ el.fail();
+ assert(!M.live().includes('title'),'A missing track drops out of the rotation');
+ M.update(1/60);                       // the advance is taken a step per frame, not recursively
+ assert(M.cur&&M.cur!=='title','and the record moves on rather than stopping');
+ // The cascade that used to happen here: a 404 arrived after play() had returned and advanced
+ // straight from the error handler, so a run of missing files started several streams at once
+ // and left the previous track running underneath them. Fail every file the way a browser
+ // does — one error event per element as it starts — and nothing may be left playing.
+ for(let i=0;i<60&&M.cur;i++){
+  const el=M.tracks[M.cur];
+  assert(Object.values(M.tracks).filter(t=>!t.paused).length<=1,
+   'more than one stream is running at once while files are failing');
+  if(el)el.fail();
+  M.update(1/60);
+ }
+ assert.equal(M.cur,null,'A folder of missing files ends up playing nothing');
+ assert.equal(Object.values(M.tracks).filter(t=>!t.paused).length,0,'and leaves no stream running');
+ M.failed={};M.tracks={};M.play('title');
+
+ // Mute silences it and releases the stream; the slider is obeyed, not just on or off.
  const playing=M.tracks[M.cur];
- // Away from the loop seam, where the game deliberately dips the level to hide the mp3 gap.
  playing.currentTime=30;
- for(let i=0;i<80;i++)M.update(1/60);
+ for(let i=0;i<90;i++)M.update(1/60);
  assert(playing.volume>0,'Music plays when it is not muted');
  a.get().save.muted=true;M.update(1/60);
  assert.equal(playing.volume,0,'Mute silences the music');
  assert(playing.paused,'and stops the stream rather than playing silence');
  a.get().save.muted=false;
- // The volume setting is respected, not just on or off.
- a.get().save.musicVolume=.25;
+ a.get().save.musicVolume=.5;
  playing.currentTime=30;
- for(let i=0;i<80;i++)M.update(1/60);
- assert(Math.abs(playing.volume-.25)<.06,'The volume setting is obeyed, got '+playing.volume.toFixed(2));
+ for(let i=0;i<90;i++)M.update(1/60);
+ // It sits under the game rather than on top of it, so the slider maps to a lower ceiling.
+ assert(playing.volume>.2&&playing.volume<.5,'The slider is obeyed and stays in the background, got '+playing.volume.toFixed(2));
+ assert(Math.abs(playing.volume-.5*.62)<.06,'and maps to the background ceiling, got '+playing.volume.toFixed(2));
  playing.currentTime=playing.duration-.2;M.update(1/60);
- assert(playing.volume<.18,'and the level dips through the loop seam, got '+playing.volume.toFixed(2));
- a.get().save.musicVolume=.55;
+ assert(playing.volume<.14,'and fades out into the change of track, got '+playing.volume.toFixed(2));
+ a.get().save.musicVolume=.3;
 }
-console.log('PASS: music picks the right track, survives missing files, and obeys mute');
+console.log('PASS: the music is one rotation that state changes never interrupt, survives missing files, and sits in the background');
 console.log('PASS: all 11 checkpoints, late checkpoint reload, both far beacon rescues and return completion');
 
 // Valley geometry. The flight tests reach checkpoints by teleporting, so nothing else here

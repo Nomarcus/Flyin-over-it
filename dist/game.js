@@ -47,7 +47,7 @@ operations[2].objective='Disable two robots, restore power, rescue two and retur
 Object.assign(operations[5],{combat:true,clear:true,boss:true,guns:[{x:1950,type:'gun'},{x:4250,type:'drone'},{x:6250,type:'missile'}]});
 operations[5].objective='Deliver power, disable the robot network and WARDEN, rescue four and return.';operations[5].tag='ROBOT NETWORK · COMMAND DRONE';operations[5].brief+=' Rogue robot sentries patrol the route. Disable all three and the unmanned WARDEN command aircraft guarding the final sector. Its amber sensor flashes before firing. Space / FIRE toggles machine-gun fire on touch, R / ROCKET launches, F / FLARES diverts missiles. Field camps replenish ammunition. People cannot be hurt by weapons.';
 operations.forEach((l,i)=>levels.push({...l,ops:true,opsIndex:i,guns:l.guns||[]}));
-let save={unlocked:0,results:{},best:0,muted:false,sensitivity:1,depthMode:false,musicVolume:.55};try{const s=JSON.parse(localStorage.getItem('rotorBlackSkyV2')||'null');if(s&&typeof s==='object'){save.unlocked=clamp(Number(s.unlocked)||0,0,levels.length-1);save.results=s.results||{};save.lastOperation=Number(s.lastOperation);save.best=Number(s.best)||0;save.muted=!!s.muted;save.musicVolume=clamp(Number(s.musicVolume??.55),0,1);save.sensitivity=clamp(Number(s.sensitivity)||1,.5,1.6);save.depthMode=false;save.schoolComplete=!!s.schoolComplete;save.trainingResults=s.trainingResults||{}}}catch{}
+let save={unlocked:0,results:{},best:0,muted:false,sensitivity:1,depthMode:false,musicVolume:.3};try{const s=JSON.parse(localStorage.getItem('rotorBlackSkyV2')||'null');if(s&&typeof s==='object'){save.unlocked=clamp(Number(s.unlocked)||0,0,levels.length-1);save.results=s.results||{};save.lastOperation=Number(s.lastOperation);save.best=Number(s.best)||0;save.muted=!!s.muted;save.musicVolume=clamp(Number(s.musicVolume??.3),0,1);save.sensitivity=clamp(Number(s.sensitivity)||1,.5,1.6);save.depthMode=false;save.schoolComplete=!!s.schoolComplete;save.trainingResults=s.trainingResults||{}}}catch{}
 const TEST_FLIGHT=true;
 save.depthMode=false;
 function persist(){try{localStorage.setItem('rotorBlackSkyV2',JSON.stringify(save))}catch{}}
@@ -1174,92 +1174,111 @@ function render(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#06151f';ctx.
     line(-w,-h,w,-h*.7,'#c3ccc6',1);ctx.restore();
    }
   }for(const p of people)if(p.status!=='attached')drawPerson(p);if(cargo?.status!=='attached')drawCargo();if(boss&&boss.hp>0&&boss.x>camera-170&&boss.x<camera+vw+170){ellipse(boss.x,ground(boss.x),70,11,'#071b284d');drawCommandDrone();}if(heli.z<=14)drawPlayer();drawWinchGuides();drawEffects();ctx.restore();drawWeather();ctx.fillStyle=screenGrad('vignette',()=>{const g=ctx.createRadialGradient(vw*.5,vh*.45,Math.min(vw,vh)*.3,vw*.5,vh*.5,Math.max(vw,vh)*.7);g.addColorStop(0,'#00000000');g.addColorStop(1,'#05152066');return g});ctx.fillRect(0,0,vw,vh);if(damageFlash>0&&!reduceMotion){ctx.fillStyle=`rgba(206,91,57,${damageFlash})`;ctx.fillRect(0,0,vw,vh)}drawFlightInstruments();ctx.restore();}
-// --- Music ---------------------------------------------------------------------------------
-// Tracks are streamed from dist/music/<name>.mp3 with plain audio elements rather than decoded
-// into Web Audio buffers: a three-minute track decodes to tens of megabytes, and a phone should
-// not be asked to hold six of those in memory at once.
+// --- Music -----------------------------------------------------------------------------------
+// A record player, not a soundtrack engine. Every track in dist/music/ is played through once
+// and then the next one starts; after the last it comes back round to the first. The title
+// theme is always first, so the game opens on the same music every time, and after that nothing
+// the player does changes what is playing — walking into a menu, starting a mission, crashing
+// and restarting all leave the music alone. The earlier version swapped tracks on every state
+// change, which meant the music restarted constantly and never got anywhere.
 //
-// A missing file is not an error. Until the mp3s are added the game simply runs silent, and any
-// track that fails to load falls back down MUSIC_FALLBACK to one that exists.
+// Tracks are streamed with plain audio elements rather than decoded into Web Audio buffers: a
+// three-minute track decodes to tens of megabytes, and a phone should not hold seven of those.
+//
+// A missing file is not an error. Any name that 404s is dropped from the rotation, so the
+// playlist is simply whichever of these Marcus has uploaded so far.
 const MUSIC_DIR='music/';
-const MUSIC_FALLBACK={title:null,valley:'title',beacon:'valley',shaft:'valley',school:'title',
- jungle:'valley',debrief:'title'};
+const MUSIC_ORDER=['title','valley','beacon','jungle','shaft','school','debrief'];
 const Music={
- tracks:{},failed:{},cur:null,prev:null,gain:0,prevGain:0,unlocked:false,
- // Resolve a name to something that actually loaded, walking the fallback chain.
- resolve(name){
-  let hops=0;
-  while(name&&this.failed[name]&&hops++<4)name=MUSIC_FALLBACK[name]||null;
-  return name;
- },
+ tracks:{},failed:{},cur:null,prev:null,gain:0,prevGain:0,unlocked:false,pending:false,anchor:null,
+ // Sits under everything else. Music that competes with the rotor is music you turn off.
+ level(){return save.muted?0:clamp(save.musicVolume??.3,0,1)*.62;},
+ live(){return MUSIC_ORDER.filter(n=>!this.failed[n]);},
  el(name){
   if(this.tracks[name])return this.tracks[name];
   if(this.failed[name]||typeof Audio!=='function')return null;
   const a=new Audio(MUSIC_DIR+name+'.mp3');
-  a.preload='auto';a.loop=true;a.volume=0;
-  a.addEventListener('error',()=>{this.failed[name]=true;delete this.tracks[name];
-   if(this.cur===name){this.cur=null;this.gain=0;}});
+  a.preload='auto';a.loop=false;a.volume=0;
+  // A 404 arrives after play() has already returned, so advancing straight from here means
+  // recursing through the whole rotation in one go: with five missing files that started five
+  // streams at once and left the previous track running. Instead it just raises a flag, and
+  // update() takes one step per frame until it lands on a file that exists.
+  a.addEventListener('error',()=>{
+   this.failed[name]=true;delete this.tracks[name];
+   if(this.cur===name){this.cur=null;this.gain=0;this.pending=true;}
+  });
+  // One track ending is the only thing that changes what is playing.
+  a.addEventListener('ended',()=>{if(this.cur===name)this.pending=true;});
   this.tracks[name]=a;
   return a;
  },
  // Browsers will not start audio without a gesture, so this is called from the same taps that
- // start the sound engine.
+ // start the sound engine. The first one drops the needle; later ones only resume it.
  unlock(){
   this.unlocked=true;
-  const c=this.cur&&this.tracks[this.cur];
-  if(c&&c.paused)c.play().catch(()=>{});
+  if(!this.cur){this.play(MUSIC_ORDER[0]);return;}
+  const c=this.tracks[this.cur];
+  if(c&&c.paused&&!save.muted)c.play().catch(()=>{});
  },
- want(name){
-  name=this.resolve(name);
-  if(name===this.cur)return;
+ play(name){
+  if(!name)return;
   // Whatever was already fading out loses its slot; two crossfades at once is mud.
   if(this.prev&&this.tracks[this.prev])this.tracks[this.prev].pause();
   this.prev=this.cur;this.prevGain=this.gain;
-  this.cur=name;this.gain=0;
-  const el=name?this.el(name):null;
-  if(el&&this.unlocked){try{el.currentTime=0}catch{}el.volume=0;el.play().catch(()=>{});}
+  this.cur=name;this.anchor=name;this.gain=0;this.pending=false;
+  // Anything that is not the outgoing track stops here. Without this a cascade of missing
+  // files could leave an earlier stream playing under the new one.
+  for(const k in this.tracks)if(k!==name&&k!==this.prev)this.tracks[k].pause();
+  const el=this.el(name);
+  if(el&&this.unlocked&&!save.muted){try{el.currentTime=0}catch{}el.volume=0;el.play().catch(()=>{});}
+ },
+ // Walk forward through the running order from wherever the needle is, skipping names already
+ // known to be missing, and stop after one full lap so an empty music folder cannot spin.
+ next(){
+  // Walk from the last track that was reached for, not from the current one: a 404 clears cur,
+  // and starting the walk over from the beginning sent the rotation backwards into a track it
+  // had already played instead of onwards to the next one.
+  const from=MUSIC_ORDER.indexOf(this.cur??this.anchor);
+  for(let step=1;step<=MUSIC_ORDER.length;step++){
+   const name=MUSIC_ORDER[(Math.max(0,from)+step)%MUSIC_ORDER.length];
+   if(this.failed[name])continue;
+   this.play(name);return;
+  }
+  // Nothing left to play: stop what is running rather than leaving the last stream going
+  // underneath a rotation that has nowhere to go.
+  this.cur=null;this.prev=null;this.pending=false;
+  for(const k in this.tracks)this.tracks[k].pause();
  },
  update(dt){
-  const ceiling=save.muted?0:clamp(save.musicVolume??.55,0,1);
+  const ceiling=this.level();
   if(this.prev){
    this.prevGain=Math.max(0,this.prevGain-dt*.9);
    const p=this.tracks[this.prev];
    if(p)p.volume=clamp(this.prevGain*ceiling,0,1);
    if(this.prevGain<=0){if(p)p.pause();this.prev=null;}
   }
+  if(this.pending){this.next();return;}
   const c=this.cur?this.tracks[this.cur]:null;
   if(!c)return;
   if(ceiling<=0){if(!c.paused)c.pause();c.volume=0;return;}
   if(this.unlocked&&c.paused)c.play().catch(()=>{});
   this.gain=Math.min(1,this.gain+dt*.7);
-  // An mp3 loop leaves a small gap at the seam. Dipping through it reads as a breath rather
-  // than a cut, which is the best that can be done without decoding the whole file.
-  let seam=1;
+  // Fade the last second and a half of a track down into the change, so one ending into the
+  // next beginning reads as a turn rather than a cut. Some browsers never fire 'ended' on a
+  // stalled stream, so running off the end also advances the record.
+  let edge=1;
   const d=c.duration;
   if(d&&isFinite(d)){
-   if(d-c.currentTime<1.2)seam=Math.min(seam,.4+(d-c.currentTime)/1.2*.6);
-   if(c.currentTime<1.2)seam=Math.min(seam,.4+c.currentTime/1.2*.6);
+   const left=d-c.currentTime;
+   if(left<1.5)edge=clamp(left/1.5,0,1);
+   if(left<=.05&&!c.paused){this.pending=true;return;}
+   if(c.currentTime<1.2)edge=Math.min(edge,.35+c.currentTime/1.2*.65);
   }
-  c.volume=clamp(this.gain*ceiling*seam,0,1);
+  c.volume=clamp(this.gain*ceiling*edge,0,1);
  },
  // Called when the mute button or the volume slider moves.
  sync(){this.update(0);}
 };
-// Which track the game wants right now. Keep this the only place that decides.
-function musicForState(){
- if(mode==='menu'||mode==='settings')return 'title';
- if(mode==='lostDone'||mode==='debrief')return 'debrief';
- if(school.active)return 'school';
- if(!L)return 'title';
- if(L.theme==='jungle')return 'jungle';
- if(L.lost){
-  // Down between the walls of a shaft, where the sky is a long way up.
-  const rim=ground(heli.x-400);
-  if(ground(heli.x)-rim>120&&heli.y>rim+40)return 'shaft';
-  if(heli.x>20000)return 'beacon';
- }
- return 'valley';
-}
 
 // --- Sound -----------------------------------------------------------------------------------
 // Every sound is synthesised; there are no audio files except the music Marcus supplies. The
@@ -1420,11 +1439,24 @@ const AudioState={
    break;
   // Launch: quiet at the start, loudest halfway out. The filter opens upward, which is the
   // opposite of every impact sound in the set.
+  // Launch, in three beats you can hear separately: the tube letting go, two swishes as the
+  // fins pass, and then the donk — a sub that starts almost sub-audible and is still there
+  // half a second later. The low end is the whole character; everything above it is texture.
   case 'rocket':
-   this.hiss(.6,.46,300,{type:'bandpass',q:.8,end:2600,out,attack:.05});
-   this.tone(190,.55,.3,'sawtooth',52,0,out,.03);
-   this.tone(58,.34,.42,'sine',24,0,out,.003);
-   this.hiss(.09,.34,900,{type:'lowpass',out,attack:.001});
+   // The tube.
+   this.hiss(.1,.5,1100,{type:'lowpass',out,attack:.001});
+   this.tone(240,.12,.34,'square',70,0,out,.002);
+   // Swish, swish: two filter sweeps passing you, the second a beat later and further out.
+   this.hiss(.3,.5,420,{type:'bandpass',q:1.3,end:3200,out,attack:.04});
+   this.hiss(.36,.4,600,{type:'bandpass',q:1.1,end:2200,delay:.16,out,attack:.06});
+   // Donk. Three low layers so it has a floor as well as a punch: the body, the drop under it,
+   // and a long sub tail that keeps the ground shaking after the swishes have gone.
+   this.tone(140,.3,.62,'triangle',44,.02,out,.004);
+   this.tone(58,.55,.72,'sine',20,.02,out,.005);
+   this.tone(34,.85,.5,'sine',15,.05,out,.02);
+   this.hiss(.6,.3,260,{type:'lowpass',end:90,delay:.05,out,attack:.02});
+   // Motor burning away from you.
+   this.tone(190,.7,.18,'sawtooth',48,.1,out,.05);
    break;
   case 'boom':
    this.tone(78,.95,.62,'sine',16,0,out,.003);
@@ -1632,7 +1664,7 @@ function updateWreck(dt){
 }
 function failMission(reason){if(mode!=='playing')return;beginWreck(reason,L.lost?crashLost:failNow);}
 function failNow(reason){mode='failed';explode(heli.x,heli.y,1.2);for(let i=0;i<5;i++)debris.push({x:heli.x+rand(-20,20),y:heli.y,vx:rand(-80,80),vy:rand(-80,-20),s:rand(.5,1),type:'falling'});showModal('SAR–07 / DISTRESS SIGNAL','Back in the air.',`<p>${reason||'The helicopter could not survive the damage. You can restart your latest mission immediately.'}</p><p>Tip: brake before reaching the target. Countersteer, level out and descend slowly. H holds altitude for rescue.</p>`,[{text:'TRY AGAIN',primary:true,run:()=>school.active?startDrill(school.kind||'basic'):loadLevel(level)},{text:'MISSIONS',run:selectMissions}]);}
-function settings(){if(!['menu','playing','paused'].includes(mode))return;const previous=mode;clearInput();mode='settings';showModal('FLIGHT CONTROLS','Tune your flight.',`<label class="settingLabel" for="sensitivity">Control sensitivity <b id="sensitivityValue">${Math.round(save.sensitivity*100)} %</b></label><input id="sensitivity" type="range" min="50" max="160" step="5" value="${Math.round(save.sensitivity*100)}"><label class="settingLabel" for="musicVol">Music <b id="musicVolValue">${Math.round((save.musicVolume??.55)*100)} %</b></label><input id="musicVol" type="range" min="0" max="100" step="5" value="${Math.round((save.musicVolume??.55)*100)}"><p>Small inputs give precision; larger inputs allow up to 70° of tilt. Countersteer to brake and increase lift in steep turns.</p><button id="gyroEnable">${gyro.enabled?'DISABLE GYRO':'ENABLE GYRO'}</button> <button id="gyroCalibrate">CALIBRATE CENTRE</button><p id="gyroStatus" role="status">${gyro.status}</p><label><input id="gyroInvert" type="checkbox" ${gyro.invert?'checked':''}> Invert gyro</label><p>Hold your iPhone or iPad comfortably in landscape and calibrate. Tilt left and right. Touch and gyro work together. H / STABILIZE helps with winching.</p>`,[{text:'CONTINUE',primary:true,run:()=>{save.sensitivity=clamp(Number($('sensitivity').value)/100,.5,1.6);save.musicVolume=clamp(Number($('musicVol').value)/100,0,1);persist();dismiss();mode=previous;$('mobile').hidden=mode!=='playing'||!coarse;updateHUD();AudioState.sync();if(previous==='paused'){mode='playing';pause()}}}]);$('sensitivity').oninput=()=>{$('sensitivityValue').textContent=$('sensitivity').value+' %';};
+function settings(){if(!['menu','playing','paused'].includes(mode))return;const previous=mode;clearInput();mode='settings';showModal('FLIGHT CONTROLS','Tune your flight.',`<label class="settingLabel" for="sensitivity">Control sensitivity <b id="sensitivityValue">${Math.round(save.sensitivity*100)} %</b></label><input id="sensitivity" type="range" min="50" max="160" step="5" value="${Math.round(save.sensitivity*100)}"><label class="settingLabel" for="musicVol">Music <b id="musicVolValue">${Math.round((save.musicVolume??.3)*100)} %</b></label><input id="musicVol" type="range" min="0" max="100" step="5" value="${Math.round((save.musicVolume??.3)*100)}"><p>Small inputs give precision; larger inputs allow up to 70° of tilt. Countersteer to brake and increase lift in steep turns.</p><button id="gyroEnable">${gyro.enabled?'DISABLE GYRO':'ENABLE GYRO'}</button> <button id="gyroCalibrate">CALIBRATE CENTRE</button><p id="gyroStatus" role="status">${gyro.status}</p><label><input id="gyroInvert" type="checkbox" ${gyro.invert?'checked':''}> Invert gyro</label><p>Hold your iPhone or iPad comfortably in landscape and calibrate. Tilt left and right. Touch and gyro work together. H / STABILIZE helps with winching.</p>`,[{text:'CONTINUE',primary:true,run:()=>{save.sensitivity=clamp(Number($('sensitivity').value)/100,.5,1.6);save.musicVolume=clamp(Number($('musicVol').value)/100,0,1);persist();dismiss();mode=previous;$('mobile').hidden=mode!=='playing'||!coarse;updateHUD();AudioState.sync();if(previous==='paused'){mode='playing';pause()}}}]);$('sensitivity').oninput=()=>{$('sensitivityValue').textContent=$('sensitivity').value+' %';};
  // Heard while you drag it, which is the only way to set a music level.
  $('musicVol').oninput=()=>{save.musicVolume=clamp(Number($('musicVol').value)/100,0,1);
   $('musicVolValue').textContent=$('musicVol').value+' %';Music.sync();};$('gyroEnable').onclick=enableGyro;$('gyroCalibrate').onclick=calibrateGyro;$('gyroInvert').onchange=e=>{gyro.invert=e.target.checked;gyro.filtered=0;};}
@@ -1831,10 +1863,16 @@ $('winchBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(mode==='p
 for(const [id,key] of [['fireControl','Space'],['rocketControl','KeyR'],['flareControl','KeyF']])$(id).addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation?.();if(mode!=='playing'||!L.combat)return;if(key==='Space')keys.Space=!keys.Space;else edges[key]=true;updateCombatHUD();});
 $('dropBtn').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation?.();if(mode==='playing')toggleWater();});
 $('hoverBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(mode==='playing')edges.KeyH=true;});
+// Browsers refuse audio until the page has been touched. Rather than wait for the button that
+// happens to call AudioState.init(), the very first interaction anywhere starts the record, so
+// the title theme is playing while you are still reading the menu.
+for(const ev of ['pointerdown','keydown'])addEventListener(ev,function once(){
+ removeEventListener(ev,once);AudioState.init();
+},{once:true});
 $('menuSettings').onclick=settings;$('lostBtn').onclick=()=>{AudioState.init();loadLevel(Number.isInteger(save.lastOperation)&&levels[save.lastOperation]?.ops?save.lastOperation:OP_START)};$('freshLostBtn').onclick=selectMissions;$('startBtn').onclick=selectMissions;$('schoolBtn').onclick=selectTraining;$('skipSchool').onclick=selectTraining;$('retrySchool').onclick=()=>{const kind=school.kind||'basic';startDrill(kind)};$('selectBtn').onclick=selectMissions;$('jungleBtn').onclick=()=>{AudioState.init();loadLevel(OP_START+3)};$('pauseBtn').onclick=pause;$('settingsBtn').onclick=settings;$('soundBtn').onclick=()=>{save.muted=!save.muted;persist();AudioState.init();AudioState.sync();updateHUD()};$('fullBtn').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();}catch{}};if(!document.documentElement.requestFullscreen)$('fullBtn').hidden=true;
 addEventListener('keydown',e=>{if(e.code!=='Tab'||$('modal').hidden)return;const list=[...$('modal').querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]')];if(!list.length)return;const first=list[0],last=list[list.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}});
 addEventListener('blur',()=>{if(lost.active)saveLost();clearInput();if(mode==='playing')pause()});document.addEventListener('visibilitychange',()=>{if(document.hidden){if(lost.active)saveLost();clearInput();if(mode==='playing')pause()}});
-let previous=0,accumulator=0;function frame(now){const dt=Math.min(.08,(now-previous)/1000||0);previous=now;accumulator+=dt;while(accumulator>=1/120){fixedUpdate(1/120);accumulator-=1/120;}Music.want(musicForState());Music.update(dt);render();requestAnimationFrame(frame);}
+let previous=0,accumulator=0;function frame(now){const dt=Math.min(.08,(now-previous)/1000||0);previous=now;accumulator+=dt;while(accumulator>=1/120){fixedUpdate(1/120);accumulator-=1/120;}Music.update(dt);render();requestAnimationFrame(frame);}
 resize();loadLevel(OP_START,false);requestAnimationFrame(frame);
 })();
 

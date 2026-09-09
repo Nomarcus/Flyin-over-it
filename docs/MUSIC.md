@@ -138,7 +138,23 @@ Only `title` and `valley` really matter. Everything else falls back to those.
 
 ## How it behaves in game
 
-- Tracks crossfade over about a second when the game changes what it wants.
-- **LJUD** mutes music and effects together and releases the stream.
-- **INSTÄLLNINGAR** has a music volume slider, audible while you drag it.
-- Nothing plays before the first tap — browsers refuse audio without a gesture.
+It is a record player, not a soundtrack engine.
+
+- `title.mp3` always plays first, so the game opens on the same music every time.
+- When a track finishes, the next one starts, in this order: **title, valley, beacon, jungle,
+  shaft, school, debrief**. After the last it comes back round to the first.
+- **Nothing you do in the game changes the track.** Starting a mission, pausing, crashing,
+  going back to the menu — the music just keeps going. That is deliberate: the earlier version
+  switched on every state change, so it restarted constantly and never got anywhere.
+- A file that is not there is skipped and drops out of the rotation. With only `title.mp3`
+  uploaded, that one track simply repeats.
+- The last second and a half of a track fades down into the change, so one ending into the next
+  beginning reads as a turn rather than a cut.
+- Music sits well under the game — the slider maps to a deliberately low ceiling. **LJUD** mutes
+  music and effects together and releases the stream.
+- Nothing plays before the first tap anywhere on the page; browsers refuse audio without a
+  gesture.
+
+The names still describe what each track is for, so if you only make three, make `title`,
+`valley` and `beacon` — but any track can follow any other now, so they should all sit in the
+same key and tempo family. That is what the house sound at the top of this file is for.
