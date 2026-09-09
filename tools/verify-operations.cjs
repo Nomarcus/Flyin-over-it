@@ -19,9 +19,10 @@ function deliverCargo(){const c=a.get().cargo;pin(c.x,c.y-140);a.keys.KeyE=true;
 function rescue(p){pin(p.x,p.y-145);a.keys.KeyE=true;ropeSeconds(3);assert.equal(p.status,'attached','Vinschen fångar personen');a.keys.KeyE=false;ropeSeconds(3);assert.equal(p.status,'aboard','Person hissas ombord');}
 assert.equal(a.operations.length,7);a.selectMissions();assert.equal(nodes.missionList.children.length,7);assert(!nodes.missionList.children.some(b=>/LOST VALLEY/.test(b.innerHTML)));assert(a.operations.every((l,i)=>!i||l.length>a.operations[i-1].length));
 for(let i=0;i<a.operations.length;i++){
- start(a.OP_START+i);const st=a.get(),o=a.getOps();assert(!a.ready());assert.equal(st.enemies.length,0);assert(!st.boss);assert(st.L.ops);assert(st.heli.landed);a.render();
+ start(a.OP_START+i);const st=a.get(),o=a.getOps();assert(!a.ready());assert.equal(st.enemies.length,(st.L.guns||[]).length);assert.equal(!!st.boss,!!st.L.boss);assert(st.L.ops);assert(st.heli.landed);a.render();
  if(st.L.gate){assert(st.people.every(p=>p.status==='sheltered'));const p=st.people[0];pin(p.x,p.y-145);a.keys.KeyE=true;ropeSeconds(3);assert.equal(p.status,'sheltered','Räddning öppnas först när platsen är säker');a.keys.KeyE=false;}
  for(const f of o.fires){scoop();extinguish(f);}
+ if(st.L.combat){const h=st.heli;pin(900,200);a.keys.Space=true;a.edges.KeyR=true;a.updateWeapons(dt);assert(st.bullets.length>0&&st.rockets.length>0,'Both original weapons fire');a.keys.Space=false;delete a.edges.KeyR;a.resetProjectiles();for(const e of st.enemies){e.hp=7;st.bullets=a.get().bullets;st.bullets.push({x:e.x-6,y:e.y,px:e.x-6,py:e.y,vx:930,vy:0,life:1,z:0,enemy:false});a.updateProjectiles(dt);assert.equal(e.hp,0,'Machine gun disables robot');}if(st.boss){const b=st.boss;b.hp=40;const rs=a.get().rockets;rs.push({x:b.x-4,y:b.y,px:b.x-4,py:b.y,dx:1,dy:0,speed:260,z:0,life:2,trail:1});a.updateProjectiles(dt);assert.equal(b.hp,0,'Rocket disables command drone');}assert(st.people.every(p=>p.status==='sheltered'||p.status==='waiting'),'Weapons cannot damage people');}
  if(st.cargo)deliverCargo();assert(st.people.every(p=>p.status==='waiting'));
  for(const p of st.people)rescue(p);
  assert.equal(st.heli.carrying,st.people.length);assert(st.people.every(p=>p.status==='aboard'));assert(o.fires.every(f=>f.out));assert(!o.bucket);
@@ -35,6 +36,11 @@ deliverCargo();assert.equal(a.get().mode,'playing','Summit delivery alone does n
 const high=pin(summit.cargo.to,a.ground(summit.cargo.to)-150);a.set({camera:high.x-500,cameraY:high.y-300});a.render();fs.writeFileSync('/tmp/summit-operation.png',nodes.game.toBuffer('image/png'));
 a.keys.KeyW=true;step(.5);assert(high.y<-4200&&Number.isFinite(a.get().cameraY),'No artificial altitude ceiling');a.keys.KeyW=false;
 console.log('PASS: 2165m summit, three flat service camps, delivery requires descent, high-altitude rendering and flight');
+// Robot encounter: live AI patrol and fire, paused controls, peaceful weapons disabled.
+start(a.OP_START+2);let patrol=a.get().enemies[0];pin(patrol.x-180,patrol.y-30);a.get().heli.collective=315;a.set({hoverMode:true});a.get().heli.hoverY=a.get().heli.y;const patrolX=patrol.x;let robotFired=false;for(let n=0;n<360;n++){step(1/120);robotFired ||= a.get().bullets.some(b=>b.enemy);}assert.notEqual(patrol.x,patrolX);assert(robotFired,'Robot patrol fires in live simulation');a.pause();assert(nodes.combatBar.hidden);assert(!a.keys.Space);a.pause();
+start(a.OP_START+5);let command=a.get().boss;pin(command.x-160,command.y+25);a.get().heli.collective=315;step(.1);assert(command.active);const view=a.get();a.set({camera:command.x-view.vw*.5,cameraY:command.y-view.vh*.38});a.render();fs.writeFileSync('/tmp/robot-command.png',nodes.game.toBuffer('image/png'));
+for(const i of [0,1,3,4,6]){start(a.OP_START+i);a.keys.Space=true;a.edges.KeyR=true;a.updateWeapons(.1);assert.equal(a.get().bullets.length,0);assert.equal(a.get().rockets.length,0);assert(nodes.combatBar.hidden);}
+console.log('PASS: robot patrol fires, command drone activates, pause clears fire, five peaceful missions stay unarmed');
 // Water is finite, misses cost water, and scenery blocks its swept trajectory.
 start(a.OP_START+1);let o=a.getOps(),f=o.fires[0];scoop();pin(f.x+210,f.y-210);ropeSeconds(2);a.toggleWater();for(let i=0;i<600;i++)a.updateOperation(dt);assert.equal(f.left,f.max);assert.equal(o.water,0);a.toggleWater();assert(!o.dropping);
 scoop();pin(f.x,f.y-220);ropeSeconds(2);const barrier={x:f.x-80,y:f.y-90,w:160,h:25,type:'roof',drip:0};a.getObstacles().push(barrier);a.toggleWater();for(let i=0;i<600;i++)a.updateOperation(dt);assert.equal(f.left,f.max,'Rock intercepts water');a.getObstacles().pop();
