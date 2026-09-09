@@ -266,3 +266,28 @@
 #waterStatus b{color:#9df2e0}#waterStatus em{font-size:10px;font-style:normal}
 @media(pointer:coarse){.bucketMode #mobile .actions{left:calc(50% - 80px)}#dropBtn{left:calc(50% - 8px);right:auto;width:148px;padding:14px 8px;bottom:max(14px,env(safe-area-inset-bottom));font-size:11px}}
 @media(max-width:620px){.missionlist.operations{grid-template-columns:1fr;gap:8px}.operations .operationCard{min-height:125px;padding:15px}.operations .operationCard b{font-size:18px}}
+
+/* Premium rescue identity. Glass is limited to compact UI surfaces. */
+:root{--ink:#edf2ee;--muted:#a4bac3;--accent:#f79951;--line:#afcbd52b;--panel:#0b2430df}
+#menu.veil{background:linear-gradient(90deg,#071d2bf0 0%,#0b2335c7 31%,#0b243453 59%,#0b243400 82%)}
+#menu .intro{width:min(420px,43vw);margin-left:6vw;padding:30px 0}
+.intro .eyebrow{font-size:10px;letter-spacing:.25em;color:#a7c9d1}
+.intro h1{font-size:clamp(64px,7vw,104px);line-height:.89;letter-spacing:-.055em;margin:24px 0 20px;color:#f5f3e9;font-weight:900}
+.intro h1 span{color:#f68e43}
+.intro .edition{font-size:10px;letter-spacing:.25em;color:#c3d3d8}
+.intro .lede{font-size:20px;line-height:1.45;font-weight:400;color:#e0e9e6;margin:25px 0}
+.mainMenu{display:grid;width:290px;gap:8px}.mainMenu button{display:flex!important;align-items:center;justify-content:space-between;width:100%;margin:0;border-radius:9px;padding:15px 18px;font-size:11px;letter-spacing:.13em;font-weight:700;min-width:0}
+.mainMenu button span{font-size:11px;opacity:.55}.mainMenu .primary{background:linear-gradient(110deg,#f9a05b,#ec7934);border:1px solid #ffd1a7;box-shadow:0 7px 20px #00132133;color:#142c38}
+.mainMenu .quiet{background:#143343a6;border:1px solid #c6dde529;box-shadow:inset 0 1px #e4f4f00c;color:#d7e5e8}.mainMenu .quiet:hover{border-color:#c4dbe774;background:#234656c7}
+.intro .missionteaser{border-top:1px solid #b7d5e02a;padding-top:17px;margin-top:24px}.intro .missionteaser b{font-size:9px;letter-spacing:.12em;color:#dfb387}.intro .missionteaser p{font-size:12px;line-height:1.7;color:#aec3ca}
+.intro .keyguide{margin-top:20px;font-size:10px;gap:14px}.menuStamp{color:#eef0dfb3;font-size:17px;letter-spacing:.15em;right:5vw;bottom:7vh}.menuStamp small{font-size:8px;letter-spacing:.16em;margin-top:10px}
+.dialog{border:1px solid #c3dbe33b;border-radius:18px;background:linear-gradient(145deg,#183747ed,#0b202ef5);box-shadow:inset 0 1px #f4fff014,0 24px 90px #06162370;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#compactHud>span:not(#compactGoal){background:linear-gradient(140deg,#1b3943d9,#102634b8);border:1px solid #c5dae02b;border-radius:7px;box-shadow:inset 0 1px #f0ffff08}
+#compactHud small{color:#a9c1ca;letter-spacing:.09em}#compactHud b{color:#eef0e5}#compactGoal{font-size:10px;letter-spacing:.035em;color:#e1c7a5;max-width:40%;white-space:normal;text-align:right;line-height:1.4}
+#toolbar #pauseBtn:not([hidden]){border-radius:9px;border-color:#bbd1db33;background:#122e3ddc;color:#dae8ea}
+#mobile #winchBtn{border-radius:12px;background:linear-gradient(130deg,#244655eb,#102938ed);border:1px solid #c8dbdf55;color:#edf1e6;box-shadow:inset 0 1px #eef5f118,0 5px 20px #06243844}
+#mobile #winchBtn.active{background:linear-gradient(120deg,#f7b67b,#e48b50);color:#152d38;border-color:#fce4c7}
+@media(max-height:620px){#menu .intro{padding:16px 0;width:48vw}.intro h1{font-size:54px;margin:14px 0}.intro h1 br{display:none}.intro h1 span{margin-left:10px}.intro .lede{font-size:14px;margin:13px 0}.intro .edition{font-size:8px}.mainMenu{grid-template-columns:1fr 1fr;width:350px;gap:7px}.mainMenu button{padding:13px;font-size:9px}.intro .missionteaser,.intro .keyguide{display:none}.intro .phoneguide{font-size:9px;max-width:340px;line-height:1.6}.menuStamp{font-size:12px}.menuStamp small{font-size:7px}#compactGoal{font-size:8px;max-width:34%}}
+@media(max-width:620px) and (min-height:621px){#menu .intro{width:84vw;margin-left:8vw}.intro h1{font-size:80px}.mainMenu{width:100%}.intro .lede{font-size:18px}.menuStamp{display:none}}
+@media(max-width:620px){#compactHud{gap:7px}#compactGoal{max-width:none;text-align:center}#compactHud>span:not(#compactGoal){padding:4px 6px}#compactHud small{font-size:7px}}
+@media(pointer:coarse){.dialog{backdrop-filter:none;-webkit-backdrop-filter:none}}

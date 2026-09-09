@@ -1,11 +1,11 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');const {createCanvas,loadImage}=require('@napi-rs/canvas');
 (async()=>{
 const kv={};globalThis.madeAudio=[];const root=require('path').resolve(__dirname,'../dist'),nodes={};function element(id){if(nodes[id])return nodes[id];let base={style:{},hidden:false,innerHTML:'',textContent:'',disabled:false,children:[],classes:new Set(),get classList(){const c=this.classes;return{toggle:(k,on)=>{on===undefined?(c.has(k)?c.delete(k):c.add(k)):(on?c.add(k):c.delete(k))},add:k=>c.add(k),remove:k=>c.delete(k),contains:k=>c.has(k)}},listeners:{},addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},setAttribute(){},setPointerCapture(){},getBoundingClientRect(){return{left:0,top:0,width:135,height:135}},append(b){this.children.push(b)},replaceChildren(){this.children=[]},querySelector(){return this.children[0]},focus(){}};if(id==='game'||id==='map')base=Object.assign(createCanvas(id==='map'?360:1440,id==='map'?100:900),base);return nodes[id]=base;}
-const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:()=>element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,
+const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orientation:{angle:90}},document:{getElementById:element,createElement:tag=>tag==='canvas'?createCanvas(1,1):element('dynamic'+Math.random()),documentElement:{},addEventListener(){},hidden:false},innerWidth:1440,innerHeight:900,devicePixelRatio:1,addEventListener(){},requestAnimationFrame(){},localStorage:{getItem:k=>kv[k]??null,setItem:(k,v)=>kv[k]=v},Image:function(){},matchMedia:()=>({matches:false}),Math,
  Audio:function(src){this.src=src;this.volume=0;this.paused=true;this.currentTime=0;this.loop=false;this.preload='';
   this.duration=120;this.play=()=>{this.paused=false;return Promise.resolve()};this.pause=()=>{this.paused=true};
   this.addEventListener=(t,fn)=>{if(t==='error')this.fail=fn};globalThis.madeAudio.push(this);},
- testArt:{day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
+ testArt:{pine:await loadImage(root+'/assets/nature/pine-mature.webp'),tropical:await loadImage(root+'/assets/backgrounds/tropical-range.webp'),range:await loadImage(root+'/assets/backgrounds/alpine-range.webp'),day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
 code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={touchAxes,clearInput,requestFacing,startLost,retryLost,updateLost,crashLost,getLost:()=>lost,startDrill,updateDrill,startTraining,updateTraining,updatePrecision,getSchool:()=>school,getPrecision:()=>precision,gearPoint,collideObstacles,blocked,getObstacles:()=>obstacles,getPads:()=>lostPads,lostEpilogue,addDent,repairDents,failMission,getDebris:()=>debris,getWreck:()=>wreck,HULL,getStars:()=>stars,Music,musicForState,gyro,orientationSample,gyroInput,gearSupport,loadLevel,begin,fixedUpdate,render,heliBody,winchMount,ground,weapon,keys,edges,resize,pause,settings,selectMissions,ready,updateBase,updateWeapons,updateProjectiles,updateWinch,updateHUD,drawWinchGuides,drawFlightInstruments,buildValleyRail,updateValleyRail,getHudCache:()=>hudCache,get:()=>({camera,cameraY,vw,vh,baseVw,baseVh,zoom,scale,oy,mode,heli,L,level,people,enemies,cargo,boss,bullets,rockets,missiles,decoys,score,save,time,wind}),set:(o)=>{if('mode'in o)mode=o.mode;if('camera'in o)camera=o.camera;if('cameraY'in o)cameraY=o.cameraY;if('hoverMode'in o)hoverMode=o.hoverMode;if('time'in o)time=o.time;if('wind'in o)wind=o.wind},resetProjectiles:()=>{bullets=[];rockets=[];missiles=[];gunCd=rocketCd=flareCd=0;},addMissile:(m)=>missiles.push(m)};})();`);vm.createContext(sandbox);vm.runInContext(code,sandbox);const a=sandbox.api,step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)},start=i=>{a.loadLevel(i);a.begin();};
 
@@ -47,17 +47,17 @@ for(const person of a.get().people){
  a.keys.KeyE=false;step(2.8);assert.equal(person.status,'aboard','Far beacon rescue');
 }
 a.updateLost(.1);assert(a.getLost().returning);h.x=390;h.angle=h.av=h.vx=h.vy=0;h.y=a.gearSupport();h.landed=true;a.set({hoverMode:false});a.updateBase(2);assert.equal(a.get().mode,'lostDone','Full return completes long valley');
-assert(/HEMMA/.test(nodes.modalTag.textContent),'Arriving home opens the debrief, got: '+nodes.modalTag.textContent);
+assert(/HOME/.test(nodes.modalTag.textContent),'Arriving home opens the debrief, got: '+nodes.modalTag.textContent);
 {
  // The ending has a second beat, and a player who never sees it has not finished the game.
  const buttons=nodes.modalActions.children.map(b=>b.textContent);
- assert(buttons.some(t=>/LYSSNA/.test(t)),'The debrief offers the epilogue, got '+JSON.stringify(buttons));
+ assert(buttons.some(t=>/LISTEN/.test(t)),'The debrief offers the epilogue, got '+JSON.stringify(buttons));
  a.lostEpilogue();
  const body=nodes.modalBody.innerHTML;
- assert(/testsändning/.test(body),'The epilogue reveals the beacon was a test');
- assert(/verktygslådan/.test(body),'The epilogue lands its last line');
- assert(/Noll liv i fara/.test(body),'The epilogue states what the rescue was worth');
- assert(nodes.modalActions.children.some(b=>/EN GÅNG TILL/.test(b.textContent)),'And offers another run');
+ assert(/test transmission/.test(body),'The epilogue reveals the beacon was a test');
+ assert(/toolbox/.test(body),'The epilogue lands its last line');
+ assert(/Zero lives in danger/.test(body),'The epilogue states what the rescue was worth');
+ assert(nodes.modalActions.children.some(b=>/ONE MORE TRY/.test(b.textContent)),'And offers another run');
 }
 console.log('PASS: the long valley ends, and the ending turns');
 
@@ -339,18 +339,18 @@ console.log('PASS: altitude zoom-out keeps the valley floor framed');
 // The instrument rail must carry height above ground and range to the objective.
 a.startLost(true);a.begin();a.updateHUD();
 const rail=id=>nodes[id]?.innerHTML||nodes[id]?.textContent||'';
-assert(/HÖJD/.test(rail('compactAlt')),'Rail shows height above ground');
+assert(/ALTITUDE/.test(rail('compactAlt')),'Rail shows height above ground');
 // Low hull, low fuel and a low pass each have to raise their own alert.
 h=a.get().heli;h.hp=20;h.fuel=12;h.landed=false;h.y=a.ground(h.x)-40;a.updateHUD();
 assert(nodes.compactHealth.classes.has('alert'),'Critical hull flags the gauge');
 assert(nodes.compactFuel.classes.has('alert'),'Low fuel flags the gauge');
 assert(nodes.compactAlt.classes.has('alert'),'A low pass flags the height');
-assert(/SKROV KRITISKT/.test(nodes.warning.textContent),'Critical hull warns');
+assert(/CRITICAL HULL/.test(nodes.warning.textContent),'Critical hull warns');
 assert(nodes.tip.classes.has('hushed'),'A warning hushes the coaching tip');
 h.hp=100;h.fuel=100;h.y=a.ground(h.x)-400;a.updateHUD();
 assert(!nodes.compactHealth.classes.has('alert')&&!nodes.compactAlt.classes.has('alert'),'Alerts clear again');
 assert(!nodes.tip.classes.has('hushed'),'The tip returns once the warning clears');
-assert(/SKROV/.test(rail('compactHealth'))&&/BRÄNSLE/.test(rail('compactFuel')),'Rail keeps hull and fuel');
+assert(/HULL/.test(rail('compactHealth'))&&/FUEL/.test(rail('compactFuel')),'Rail keeps hull and fuel');
 assert(/\d+\s*m/.test(nodes.compactGoal.textContent),'Rail shows range to the objective');
 const readAlt=()=>Number(nodes.compactAlt.innerHTML.match(/<b>(\d+)/)[1]);
 h=a.get().heli;const before=readAlt();h.y-=400;a.updateHUD();const after=readAlt();
@@ -446,7 +446,7 @@ h.x=9500;h.y=a.ground(9500)-260;h.vx=220;h.vy=40;h.angle=.3;h.landed=false;h.air
 const debrisBefore=a.getDebris().length;
 a.failMission('test');
 assert.equal(a.get().mode,'wreck','A crash starts the wreck rather than the modal');
-assert(nodes.modal.hidden!==false||!/KRASCH/.test(nodes.modalTag.textContent),'The modal waits');
+assert(nodes.modal.hidden!==false||!/CRASH/.test(nodes.modalTag.textContent),'The modal waits');
 const parts=a.getDebris().slice(debrisBefore);
 assert(parts.some(d=>d.type==='rotor'),'The rotor comes off');
 assert(parts.filter(d=>d.type==='panel').length>=4,'Panels shed, got '+parts.filter(d=>d.type==='panel').length);
@@ -460,10 +460,16 @@ assert(sawSpin,'The wreck actually tumbles');
 assert(seconds>.6,'The wreck is long enough to watch, was '+seconds.toFixed(2)+'s');
 assert(seconds<3.2,'The wreck is short enough to want another go, was '+seconds.toFixed(2)+'s');
 assert.equal(a.get().mode,'failed','The wreck always ends');
-assert(/KRASCH/.test(nodes.modalTag.textContent),'and then it tells you, got '+nodes.modalTag.textContent);
+assert(/CRASH/.test(nodes.modalTag.textContent),'and then it tells you, got '+nodes.modalTag.textContent);
 assert.equal(a.getWreck(),null,'and clears its state');
 console.log('PASS: a crash is something you watch, and it always ends ('+seconds.toFixed(1)+'s)');
 console.log('PASS: reserved flight viewport, camera clearance and landscape resize');
 console.log('PASS: two-hand lift, one-hand tilt, released descent, directional swipe, pointer cancellation, pause cleanup, winch toggle, no combat and seven rescue mission gates.');
+
+// Continue remembers the selected operation without exposing archived campaign modes.
+a.loadLevel(10);a.loadLevel(8,false);nodes.lostBtn.onclick();assert.equal(a.get().level,10,'Continue returns to the selected operation');
+assert.equal(a.get().save.lastOperation,10,'Operation selection persists');
+console.log('PASS: Continue restores the selected operation');
 })().catch(e=>{console.error(e);process.exit(1)});
+
 
