@@ -260,6 +260,8 @@
 /* The long course leads the list and is meant to read as a different kind of thing. */
 .operations .expeditionCard{grid-column:1/-1;border-color:#ffbd7466;background:linear-gradient(135deg,#4a3320aa,#1d2530)}
 .operations .expeditionCard small{color:#ffbd74}
+.operations .finaleCard{grid-column:1/-1;border-color:#9dd2cd55;background:linear-gradient(135deg,#1d3a4caa,#131f2c)}
+.operations .finaleCard small{color:#9fd8ea}
 .operations .operationCard small{font-size:10px;letter-spacing:1px;color:#9fcdc7}
 .operations .operationCard b{font-size:20px;letter-spacing:.5px;color:#fff2d8}
 .operations .operationCard span{font-size:12px;color:#b5c6c9}
@@ -296,3 +298,30 @@
 @media(pointer:coarse){.dialog{backdrop-filter:none;-webkit-backdrop-filter:none}}
 
 #combatBar{position:fixed;left:16px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;gap:5px;z-index:46}#combatBar[hidden]{display:none!important}#combatBar button{touch-action:none;background:#102c39ed;border:1px solid #a3b9bd66;color:#eed7b5;border-radius:10px;padding:13px 10px;font-size:10px;font-weight:800}#combatBar button:disabled{opacity:.4}
+
+/* The landing light, only in the shaft. Lit when it is on, so a glance at the button tells you
+   whether you are about to fly into a gate you cannot see. */
+#lightBtn.on{background:linear-gradient(160deg,#f4c67c,#c98b3c);color:#20180c;border-color:#ffdca2}
+
+/* The credits. Same type, same palette, same restraint as the rest of the game — it should read
+   as the last screen of this game rather than a web page that opened on top of it. */
+#credits{position:fixed;inset:0;z-index:60;background:radial-gradient(120% 90% at 50% 0%,#122c3c,#050e15 70%);overflow:hidden;display:flex;justify-content:center}
+#creditsRoll{width:min(660px,88vw);padding:0 6px;color:#d5e5e4;text-align:center;position:absolute;top:100%}
+#creditsRoll.rolling{animation:creditsUp 104s linear forwards}
+@keyframes creditsUp{from{transform:translateY(0)}to{transform:translateY(calc(-100% - 100vh))}}
+#creditsRoll h2{font-size:clamp(30px,7vw,52px);letter-spacing:5px;color:#ffe9bd;margin:22vh 0 18px}
+#creditsRoll h3{font-size:clamp(24px,6vw,40px);letter-spacing:6px;color:#fff3d6;margin:70px 0 26px}
+#creditsRoll .creditsLede{font-size:15px;line-height:1.75;color:#a9c4c6;margin:0 auto 44px;max-width:44ch}
+#creditsRoll .creditsFacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:14px;margin:0 0 46px}
+#creditsRoll .creditsFacts div{border:1px solid #9dd2cd28;border-radius:10px;padding:14px 8px;background:#15303c66}
+#creditsRoll .creditsFacts b{display:block;font-size:19px;color:#ffd79a}
+#creditsRoll .creditsFacts span{font-size:9px;letter-spacing:1.4px;color:#8fb0b3}
+#creditsRoll .creditsBlock{margin:0 0 30px}
+#creditsRoll .creditsBlock span{display:block;font-size:9.5px;letter-spacing:2.4px;color:#84a7ab;margin-bottom:6px}
+#creditsRoll .creditsBlock b{font-size:19px;letter-spacing:1px;color:#eef6f3;font-weight:600}
+#creditsRoll .creditsThanks{font-size:14.5px;line-height:1.85;color:#bcd3d2;max-width:46ch;margin:56px auto;text-align:left}
+#creditsRoll .creditsEnd{font-size:15px;letter-spacing:6px;color:#ffd79a;margin:70px 0 40px}
+#creditsClose{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+ padding:11px 26px;border-radius:999px;border:1px solid #9dd2cd44;background:#0d2230cc;color:#cfe4e1;
+ font:600 11px/1 ui-monospace,monospace;letter-spacing:2px}
+@media(max-height:520px){#creditsRoll h2{margin-top:14vh}}
