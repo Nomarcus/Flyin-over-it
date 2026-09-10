@@ -51,10 +51,10 @@ operations.forEach((l,i)=>levels.push({...l,ops:true,opsIndex:i,guns:l.guns||[]}
 // others use: no length across, no people on the ground, no return to base.
 const CLIMB_LEVEL=levels.length;
 levels.push({name:'THE LAST CLIMB',region:'Cloudbase Station',tag:'FINALE · STRAIGHT UP',
- brief:'Cloudbase Station is 6 750 m above you. There is one way there and it is up.',
+ brief:'Cloudbase Station is 10 440 m above you. There is one way there and it is up.',
  objective:'Climb the shaft and land on Cloudbase Station.',
- length:920,seed:997,theme:'storm',environment:'storm-mountains',climb:true,
- people:[],guns:[],cargo:null,wind:0,par:220,beacon:0});
+ length:1440,seed:997,theme:'storm',environment:'storm-mountains',climb:true,combat:true,
+ people:[],guns:[],cargo:null,wind:0,par:420,beacon:0});
 let save={unlocked:0,results:{},best:0,muted:false,sensitivity:1,depthMode:false,musicVolume:.3};try{const s=JSON.parse(localStorage.getItem('rotorBlackSkyV2')||'null');if(s&&typeof s==='object'){save.unlocked=clamp(Number(s.unlocked)||0,0,levels.length-1);save.results=s.results||{};save.lastOperation=Number(s.lastOperation);save.best=Number(s.best)||0;save.muted=!!s.muted;save.musicVolume=clamp(Number(s.musicVolume??.3),0,1);save.sensitivity=clamp(Number(s.sensitivity)||1,.5,1.6);save.depthMode=false;save.schoolComplete=!!s.schoolComplete;save.trainingResults=s.trainingResults||{}}}catch{}
 const TEST_FLIGHT=true;
 save.depthMode=false;
@@ -468,7 +468,7 @@ function selectMissions(){
  // The finale closes the list, the way it closes the game.
  {const v=levels[CLIMB_LEVEL],b=document.createElement('button'),saved=readClimb();
   b.className='operationCard finaleCard';
-  b.innerHTML='<small>18 · FINALE</small><b>'+v.name+'</b><span>'+v.region+' · 6 750 m straight up</span><em>'
+  b.innerHTML='<small>18 · FINALE</small><b>'+v.name+'</b><span>'+v.region+' · 10 440 m straight up</span><em>'
    +(saved?.done?'COMPLETE · FLY IT AGAIN':saved?.cp?'CONTINUE FROM CHECKPOINT '+saved.cp+' →':'START →')+'</em>';
   b.onclick=()=>{AudioState.init();startClimb(!readClimb()?.cp)};list.append(b);}
 }
@@ -538,7 +538,7 @@ function updateWeapons(dt){if(!L.combat||mode!=='playing')return;heli.heat=Math.
  if(keys.Space&&gunCd<=0&&!heli.overheated&&heli.turn<.08){gunCd=.095;heli.heat=Math.min(1,heli.heat+.025);bullets.push({x:g.x,y:g.y,px:g.x,py:g.y,vx:g.dx*930,vy:g.dy*930,life:1.25,enemy:false,z:heli.z,vz:0});heli.vx-=g.dx*.43;heli.vy-=g.dy*.43;muzzle=.07;shake=Math.max(shake,.6);AudioState.sfx('gun');if(heli.heat>=1){heli.overheated=true;AudioState.sfx('overheat');radio('Cannon cooling. Short bursts keep the heat down.',3)}}
  if(edges.KeyR&&rocketCd<=0&&heli.rockets>=1&&heli.turn<.08){rocketCd=.65;heli.rockets--;rockets.push({x:g.x,y:g.y+3,px:g.x,py:g.y+3,dx:g.dx,dy:g.dy,speed:260,z:heli.z,life:3.3,trail:0});heli.vx-=g.dx*6;heli.vy-=g.dy*6;heli.av-=heli.dir*.02;shake=Math.max(shake,2);AudioState.sfx('rocket');}
  if(edges.KeyF&&flareCd<=0&&heli.flares>=1){flareCd=2.7;heli.flares--;for(let i=0;i<7;i++){decoys.push({x:heli.x,y:heli.y+10,vx:heli.vx*.4+rand(-100,100),vy:rand(30,100),z:heli.z,life:3.1});}AudioState.sfx('flare');radio('Flares deployed.',2);}}
-function updateEnemies(dt){for(const e of enemies){if(e.hp<=0||e.training)continue;if(e.type==='drone'){e.x=e.homeX+Math.sin(time*.5+e.homeX)*95;e.y=ground(e.x)-210+Math.sin(time*1.2)*28;}e.cd-=dt;e.flash=Math.max(0,e.flash-dt);const dx=heli.x-e.x,dy=heli.y-e.y;e.aim=Math.atan2(dy,dx);const distance=Math.hypot(dx,dy);e.warn=e.cd<.6&&distance<760?1:0;if(e.cd<=0&&distance<760&&heli.x>680&&!blocked(e.x,e.y-25,heli.x,heli.y)){if(e.type==='missile'){missiles.push({x:e.x,y:e.y-32,px:e.x,py:e.y-32,vx:0,vy:-100,life:7,trail:0,decoy:null});e.cd=5.5;AudioState.sfx('rocket',e.x);AudioState.sfx('alarm');radio('Missile incoming. Use flares or break away.',3);}else{const speed=235;const lead=.35;const a=Math.atan2(dy+heli.vy*lead,dx+heli.vx*lead);bullets.push({x:e.x,y:e.y-22,px:e.x,py:e.y-22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:4,enemy:true});AudioState.sfx('enemyGun',e.x);e.cd=1.8+Math.random()*.5;e.flash=.12;}}}
+function updateEnemies(dt){for(const e of enemies){if(e.hp<=0||e.training||e.climbRobot)continue;if(e.type==='drone'){e.x=e.homeX+Math.sin(time*.5+e.homeX)*95;e.y=ground(e.x)-210+Math.sin(time*1.2)*28;}e.cd-=dt;e.flash=Math.max(0,e.flash-dt);const dx=heli.x-e.x,dy=heli.y-e.y;e.aim=Math.atan2(dy,dx);const distance=Math.hypot(dx,dy);e.warn=e.cd<.6&&distance<760?1:0;if(e.cd<=0&&distance<760&&heli.x>680&&!blocked(e.x,e.y-25,heli.x,heli.y)){if(e.type==='missile'){missiles.push({x:e.x,y:e.y-32,px:e.x,py:e.y-32,vx:0,vy:-100,life:7,trail:0,decoy:null});e.cd=5.5;AudioState.sfx('rocket',e.x);AudioState.sfx('alarm');radio('Missile incoming. Use flares or break away.',3);}else{const speed=235;const lead=.35;const a=Math.atan2(dy+heli.vy*lead,dx+heli.vx*lead);bullets.push({x:e.x,y:e.y-22,px:e.x,py:e.y-22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:4,enemy:true});AudioState.sfx('enemyGun',e.x);e.cd=1.8+Math.random()*.5;e.flash=.12;}}}
  if(boss&&boss.hp>0){const b=boss;b.active=Math.abs(heli.x-b.x)<1150;if(b.active){b.t+=dt;b.x=damp(b.x,clamp(heli.x+heli.dir*420,L.length-2300,L.length-350),.42,dt);b.y=damp(b.y,clamp(heli.y-55+Math.sin(b.t*.8)*100,130,430),.5,dt);const clearRoof=obstacles.filter(o=>b.x>o.x-100&&b.x<o.x+o.w+100).reduce((y,o)=>Math.min(y,o.y-85),ground(b.x)-110);b.y=Math.min(b.y,clearRoof);b.cd-=dt;b.missileCd-=dt;b.flash=Math.max(0,b.flash-dt);if(b.cd<=0){b.cd=b.hp<b.max*.4?1.2:1.9;let a=Math.atan2(heli.y-b.y,heli.x-b.x);for(let i=-1;i<=1;i++)bullets.push({x:b.x,y:b.y+12,px:b.x,py:b.y+12,vx:Math.cos(a+i*.13)*260,vy:Math.sin(a+i*.13)*260,life:4,enemy:true});b.flash=.14;}if(b.missileCd<=0){b.missileCd=7;missiles.push({x:b.x,y:b.y+25,px:b.x,py:b.y+25,vx:0,vy:70,life:7,trail:0,decoy:null});}}}}
 function updateProjectiles(dt){for(const b of bullets){if(b.life<=0)continue;if(b.z===undefined){b.z=0;b.vz=b.enemy?(heli.z/Math.max(.1,Math.hypot(heli.x-b.x,heli.y-b.y)/Math.hypot(b.vx,b.vy))):0;}b.z+=(b.vz||0)*dt;b.px=b.x;b.py=b.y;b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(blocked(b.px,b.py,b.x,b.y)){b.life=0;continue;}if(b.enemy){if(Math.abs(b.z-heli.z)<20&&segmentDist(b.px,b.py,b.x,b.y,heli.x,heli.y)<25){b.life=0;hitHeli(7)}}else{for(const e of enemies){if(e.hp>0&&Math.abs(b.z)<20&&segmentDist(b.px,b.py,b.x,b.y,e.x,e.y)<28){if(e.trainingWeapon!=='rocket')damageEnemy(e,7);else if(warningTimer<0){radio('The armoured target needs a rocket. Press R / ROCKET.',3);warningTimer=4;}b.life=0;break}}if(b.life>0&&boss&&boss.hp>0&&Math.abs(b.z)<28&&segmentDist(b.px,b.py,b.x,b.y,boss.x,boss.y)<57){boss.hp=Math.max(0,boss.hp-4);boss.flash=.07;b.life=0;if(boss.hp<=0)killBoss();}}
  if(b.life>0&&b.y>ground(b.x)){b.life=0;for(let j=0;j<2;j++)addParticle(b.x,ground(b.x)-2,rand(-25,25),rand(-45,-10),'#a59679',2,.25)} }
@@ -862,6 +862,7 @@ function drawObstacles(){if(L.lost){const g=ctx.createLinearGradient(0,520,0,790
   if(o.x+o.w<camera-100||o.x>camera+vw+100||o.y+o.h<cameraY-100||o.y>cameraY+vh+100)continue;
   if(o.deck)continue; // The climb renderer owns the exact deck silhouette.
   if(o.type==='pillar')drawPillar(o);
+  else if(o.rockGate)drawBoulder(o);
   else if(o.type==='bridge')drawSpan(o);
   else if(o.type==='roof')drawOverhang(o);
   else drawBoulder(o);
@@ -1229,7 +1230,7 @@ function drawWeather(){if(L.climb)return;const weather=environment().weather;if(
 function atDepth(z,draw){if(!z){draw();return;}const k=1-z*.0017,c=camera+vw*.5;ctx.save();ctx.translate(c,230-z*.28);ctx.scale(k,k);ctx.translate(-c,-230);draw();ctx.restore();}
 function drawDepthFloor(){if(!save.depthMode)return;for(const z of [100,0,-100])atDepth(z,()=>{ctx.setLineDash([9,15]);ctx.strokeStyle=z===0?'#d9d9a947':'#b4d3d323';ctx.lineWidth=1;ctx.beginPath();for(let x=camera-100;x<camera+vw+200;x+=20){const y=ground(x);x===camera-100?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.stroke();ctx.setLineDash([])});}
 function drawPlayer(){atDepth(heli.z,()=>{for(const p of people)if(p.status==='attached')drawPerson(p);if(cargo?.status==='attached')drawCargo();drawHeli();drawBucket();});}
-function render(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#06151f';ctx.fillRect(0,0,innerWidth,innerHeight);ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.save();ctx.beginPath();ctx.rect(0,0,vw,vh);ctx.clip();if(!reduceMotion){ctx.translate(Math.sin(visualTime*53)*shake*.25,Math.cos(visualTime*47)*shake*.20)}drawBackdrop();ctx.save();ctx.translate(-camera,-cameraY);drawTerrain();drawGroundDetail();if(heli.z>14)drawPlayer();for(const s of scenery){if(s.x<camera-100||s.x>camera+vw+100)continue;s.type==='tree'?drawTree(s):drawRock(s)}drawBase();drawOutpost();drawSceneProps();drawClimb();drawObstacles();drawOperation();drawLost();drawHazardGuides();drawFlightGuides();for(const e of enemies)if(e.x>camera-100&&e.x<camera+vw+100)drawEnemy(e);for(const d of debris){
+function render(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#06151f';ctx.fillRect(0,0,innerWidth,innerHeight);ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.save();ctx.beginPath();ctx.rect(0,0,vw,vh);ctx.clip();if(!reduceMotion){ctx.translate(Math.sin(visualTime*53)*shake*.25,Math.cos(visualTime*47)*shake*.20)}drawBackdrop();ctx.save();ctx.translate(-camera,-cameraY);drawTerrain();drawGroundDetail();if(heli.z>14)drawPlayer();for(const s of scenery){if(s.x<camera-100||s.x>camera+vw+100)continue;s.type==='tree'?drawTree(s):drawRock(s)}drawBase();drawOutpost();drawSceneProps();drawClimb();drawObstacles();drawOperation();drawLost();drawHazardGuides();drawFlightGuides();for(const e of enemies)if(!e.climbRobot&&e.x>camera-100&&e.x<camera+vw+100)drawEnemy(e);for(const d of debris){
    if(d.type==='falling'||d.type==='wreck'){poly([[d.x-13*d.s,d.y],[d.x-20*d.s,d.y-15*d.s],[d.x+16*d.s,d.y-20*d.s],[d.x+23*d.s,d.y]],'#3b4c55')}
    else if(d.type==='rotor'){
     ctx.save();ctx.translate(d.x,d.y);ctx.rotate(d.rot);
@@ -1802,17 +1803,20 @@ function lostWind(){const u=time%14;let x=0,y=0,label='CALM';if(u>=3&&u<6){x=Mat
 // Every other level in the game is a journey across a landscape. This one is a journey straight
 // up out of it, and it is the last thing in the game.
 //
-// The shaft is 1500 units wide and 15 000 tall — about 6 750 m — which is roughly three minutes
+// The shaft is 1500 units wide and 15 000 tall — about 10 440 m — which is roughly three minutes
 // of climbing once the gates, the wind and the dark have had their say. It is built as one
 // continuous ascent with two ledges to stand on, and it changes underneath you as you gain
 // height: calm, then wind, then rain, then the dark band where you cannot see the next gate
 // without the landing light, and finally out through the cloud deck into daylight with the
 // station above you.
-const CLIMB_FLOOR=610,CLIMB_TOP=-14400,CLIMB_WIDE=920;
+const CLIMB_FLOOR=610,CLIMB_TOP=-22590,CLIMB_WIDE=1440;
 const CLIMB_PADS=[
  {y:CLIMB_FLOOR,name:'GROUND CREW',label:'LAUNCH'},
  {y:-4200,name:'RELAY MAST',label:'CHECKPOINT 1'},
- {y:-9400,name:'CLOUD ANCHOR',label:'CHECKPOINT 2'}
+ {y:-8400,name:'QUARRY REFUGE',label:'CHECKPOINT 2'},
+ {y:-12800,name:'CLOUD ANCHOR',label:'CHECKPOINT 3'},
+ {y:-16800,name:'STORM SHELTER',label:'CHECKPOINT 4'},
+ {y:-20500,name:'SKY WATCH',label:'CHECKPOINT 5'}
 ];
 // What the shaft is doing at a given height. One function, so the weather, the darkness, the
 // radio and the music all agree about where you are.
@@ -1835,10 +1839,10 @@ function climbBand(y){
 // authored: twenty-three of them by hand would be twenty-three chances to mistype a number.
 function climbObstacles(){
  const out=[],walls=70,inner=CLIMB_WIDE-walls*2;
- for(let i=1;i<=23;i++){
+ for(let i=1;i<=35;i++){
   const y=CLIMB_FLOOR-i*640-120;
   if(CLIMB_PADS.some(p=>Math.abs(p.y-y)<420))continue;      // never a gate across a checkpoint
-  const t=(i-1)/22;
+  const t=(i-1)/34;
   // The opening walks from side to side on a slow sine rather than jumping between the walls:
   // consecutive gates have to be reachable from one another while still climbing, and the swing
   // widens as the shaft gets harder. It starts near the middle and wide, because the first gate
@@ -1849,13 +1853,13 @@ function climbObstacles(){
   // The collision hull is 205 units across, not the 150 the drawn body suggests: the rotor tips
   // reach 94 forward and the tail boom 111 back. A gate has to clear that with room for the
   // wind, so the tightest is 300 rather than the 255 an eyeballed number would have given.
-  const gap=lerp(430,300,t),swing=lerp(40,130,t);
+  const gap=i%5===0?800:lerp(610,440,t),swing=lerp(60,210,t);
   // A slow sine, so the opening never moves more than about a third of the shaft between one
   // gate and the next. You have 640 units of climb to cross it, and crossing costs lift.
   const centre=CLIMB_WIDE*.5+Math.sin(i*.45)*swing;
   const open=clamp(centre-gap*.5,walls+26,CLIMB_WIDE-walls-26-gap),right=open+gap;
-  if(open-walls>24)out.push({x:walls,y,w:open-walls,h:46,type:'bridge',climb:true});
-  if(CLIMB_WIDE-walls-right>24)out.push({x:right,y,w:CLIMB_WIDE-walls-right,h:46,type:'bridge',climb:true});
+  if(open-walls>24)out.push({x:walls,y,w:open-walls,h:i%3===0?100:46,type:'bridge',climb:true,rockGate:i%3===0});
+  if(CLIMB_WIDE-walls-right>24)out.push({x:right,y,w:CLIMB_WIDE-walls-right,h:i%3===0?100:46,type:'bridge',climb:true,rockGate:i%3===0});
  }
  // The ledges and the station deck are real: solid to fly into, and the only flat surfaces in
  // the shaft. You go around one and come down on top of it, which is what a ledge is.
@@ -1889,9 +1893,9 @@ function startClimb(fresh=false){
  saveClimb();
  $('modalTag').textContent='THE LAST CLIMB · CLOUDBASE STATION';
  $('modalTitle').textContent=saved?.cp?'Back to the mast.':'Straight up.';
- $('modalBody').innerHTML='<p>Cloudbase Station is 6 750 m above you. There is one way there and it is up.</p>'
-  +'<p>Weave the gates. Two ledges on the way will hold your progress and refuel you. Above the rain the cloud deck is dark — <b>L</b> or the LIGHT button turns on the landing light, and you will need it.</p>'
-  +'<p>Drones drift in the shaft. They will not shoot at you, but they are solid.</p>';
+ $('modalBody').innerHTML='<p>Cloudbase Station is 10 440 m above you. There is one way there and it is up.</p>'
+  +'<p>Weave the gates. Five shelters hold your progress, refuel, repair and rearm you. Above the rain the cloud deck is dark — <b>L</b> or the LIGHT button turns on the landing light, and you will need it.</p>'
+  +'<p>Robot patrols guard the open chambers. FIRE / Space uses the cannon. ROCKET / R launches a rocket. Aim with the nose. Shelters are safe zones.</p>';
  document.body?.classList.add('climbMode');
  updateHUD();
 }
@@ -1903,22 +1907,25 @@ function buildDrones(){
  // right in a gate opening, where the shaft becomes a wall you cannot get past.
  const rows=[...new Set(all.filter(o=>!o.deck).map(o=>o.y))].sort((a,b)=>b-a);
  climb.drones=[];
- for(let k=2;k<rows.length;k+=3){
+ for(let k=3;k<rows.length;k+=2){
   const y=Math.round((rows[k]+rows[k-1])*.5);
   if(CLIMB_PADS.some(p=>Math.abs(p.y-y)<340))continue;
   if(rows.some(r=>Math.abs(r-y)<260))continue;         // never within reach of a gate
   // Only below the cloud deck. Above it the shaft is already asking for the landing light and
   // the tightest gates; a drone you cannot see coming on top of that is not difficulty.
   if(climbBand(y).dark>.05)continue;
-  climb.drones.push({x:CLIMB_WIDE*.5,y,homeY:y,phase:k*1.37,span:120+((k*61)%70),hp:1});
+  climb.drones.push({x:CLIMB_WIDE*.5,y,homeY:y,phase:k*1.37,span:200+((k*61)%100),hp:42,max:42,climbRobot:true,type:'drone',cd:2.8,flash:0,aim:0});
  }
+ enemies=climb.drones;
 }
-function readClimb(){try{const d=JSON.parse(localStorage.getItem('flyinLastClimbV1')||'null');return d&&d.version===1?d:null;}catch{return null;}}
-function saveClimb(){if(!climb)return;try{localStorage.setItem('flyinLastClimbV1',JSON.stringify({version:1,cp:climb.cp,best:climb.best,crashes:climb.crashes,total:climb.total,landed:[...climb.landed],done:!!climb.done}));}catch{}}
+function readClimb(){try{const d=JSON.parse(localStorage.getItem('flyinLastClimbV2')||'null');return d&&d.version===1?d:null;}catch{return null;}}
+function saveClimb(){if(!climb)return;try{localStorage.setItem('flyinLastClimbV2',JSON.stringify({version:1,cp:climb.cp,best:climb.best,crashes:climb.crashes,total:climb.total,landed:[...climb.landed],done:!!climb.done}));}catch{}}
 function restoreClimb(){
  const p=CLIMB_PADS[climb.cp];
  heli.x=CLIMB_WIDE*.5;heli.y=p.y-30.8;heli.vx=heli.vy=heli.angle=heli.av=heli.bank=0;
  heli.landed=true;heli.airborne=false;heli.hp=100;heli.fuel=100;
+ heli.rockets=8;heli.flares=4;heli.heat=0;heli.overheated=false;
+ bullets=[];rockets=[];missiles=[];
  zoom=1;applyView();camera=clamp(heli.x-vw*.5,0,Math.max(0,CLIMB_WIDE-vw));cameraY=heli.y-vh*.55;
 }
 function crashClimb(reason){
@@ -1951,8 +1958,18 @@ function updateClimb(dt){
  // Drones drift across the shaft and are solid. They do not shoot: this is an obstacle course,
  // not a firefight, and the last level should be about flying.
  for(const d of climb.drones){
+  if(d.hp<=0)continue;
   d.x=CLIMB_WIDE*.5+Math.sin(visualTime*.55+d.phase)*d.span;
   d.y=d.homeY+Math.sin(visualTime*.8+d.phase)*22;
+  d.cd-=dt;d.flash=Math.max(0,d.flash-dt);
+  const distance=Math.hypot(d.x-heli.x,d.y-heli.y);
+  d.aim=Math.atan2(heli.y-d.y,heli.x-d.x);
+  const nearPad=CLIMB_PADS.some(p=>Math.abs(heli.y-p.y)<230);
+  d.warn=distance<650&&d.cd<.8&&!nearPad;
+  if(d.cd<=0&&distance<650&&!nearPad&&!blocked(d.x,d.y,heli.x,heli.y)){
+   bullets.push({x:d.x,y:d.y,px:d.x,py:d.y,vx:Math.cos(d.aim)*195,vy:Math.sin(d.aim)*195,life:3.5,enemy:true});
+   d.cd=3.2;d.flash=.15;AudioState.sfx('enemyGun',d.x);
+  }
   if(Math.hypot(d.x-heli.x,d.y-heli.y)<62&&heli.hitCd<=0){
    hitHeli(9,d.x,d.y);
    const push=Math.sign(heli.x-d.x)||1;heli.vx+=push*180;heli.vy-=40;
@@ -1969,6 +1986,7 @@ function updateClimb(dt){
    radio(p.name+' secured. Refuelling. '+climbMetres(CLIMB_FLOOR-CLIMB_TOP-(CLIMB_FLOOR-p.y))+' m still above you.',5);
   }
   climb.cp=Math.max(climb.cp,i);
+  heli.rockets=8;heli.flares=4;
   heli.fuel=Math.min(100,heli.fuel+dt*30);heli.hp=Math.min(100,heli.hp+dt*14);repairDents(dt*.12);
  }
  // Arrival. The station is a wide deck at the top with the whole crew out on it.
@@ -1991,23 +2009,30 @@ function drawClimb(){
  for(const side of [0,1]){
   const x=side?CLIMB_WIDE-70:0,w=70,inner=side?x:x+w;
   ctx.fillStyle=side?ROCK.dark:ROCK.mid;ctx.fillRect(x,top,w,bot-top);
-  // Strata.
-  for(let y=Math.floor(top/44)*44;y<bot;y+=44){
-   const n=hash(y*.021+side*5.3);
-   ctx.fillStyle=n>.5?ROCK.deep:ROCK.dark;
-   ctx.fillRect(x,y,w,3+n*4);
+  // World-anchored strata: no repeating sawtooth edge or camera-relative texture crawl.
+  ctx.save();ctx.beginPath();ctx.rect(x,top,w,bot-top);ctx.clip();
+  const shade=ctx.createLinearGradient(x,0,x+w,0);
+  shade.addColorStop(0,side?'#788b88':'#182f3b');shade.addColorStop(.55,'#465d63');shade.addColorStop(1,side?'#1b303d':'#91a49a');
+  ctx.fillStyle=shade;ctx.fillRect(x,top,w,bot-top);
+  for(let y=Math.floor(top/117)*117;y<bot;y+=117){
+   const n=hash(y*.021+side*5.3),rise=n*37;
+   poly([[x,y],[x+w,y+rise],[x+w,y+61],[x+26,y+94],[x,y+70]],n>.5?'#a5b2a529':'#071c334f');
+   line(x,y+7,x+w,y+rise+7,'#bec7b838',2);
+   line(x+20,y+16,x+31,y+57,'#0b223b66',2);
+   line(x+31,y+57,x+18,y+86,'#0b223b66',1);
+   for(let k=0;k<8;k++)ellipse(x+hash(y+k)*70,y+hash(y+k*17)*100,1.3,.7,'#c1c8b62e');
   }
-  // The broken edge the craft actually flies past.
-  ctx.beginPath();ctx.moveTo(inner,top);
-  for(let y=top;y<bot;y+=46){
-   const bite=hash(y*.037+side*2.1)*22+4;
-   ctx.lineTo(inner+(side?bite:-bite),y+23);ctx.lineTo(inner,y+46);
-  }
-  ctx.lineTo(side?CLIMB_WIDE:0,bot);ctx.lineTo(side?CLIMB_WIDE:0,top);ctx.closePath();
-  ctx.fillStyle=side?ROCK.deep:ROCK.dark;ctx.fill();
-  line(inner,top,inner,bot,'#0a1a2355',3);
+  ctx.restore();line(inner,top,inner,bot,'#bbc7b649',1.5);
  }
  // Ledges you can stand on, and the mast that carries each one.
+ const sectors=['LOWER QUARRY','RELAY GORGE','PATROL CHAMBERS','CLOUD CROSSING','UPPER RIDGE','FINAL APPROACH'];
+ for(let i=0;i<sectors.length;i++){
+  const y=CLIMB_FLOOR-700-i*3800;if(y<top||y>bot)continue;
+  const x=106;
+  line(x,y-26,x,y+25,'#dfb777',3);
+  label(String(i+1).padStart(2,'0'),x+26,y,'#f2d398',16);
+  label(sectors[i],x+124,y+23,'#c4d8d5',10);
+ }
  for(let i=1;i<CLIMB_PADS.length;i++){
   const p=CLIMB_PADS[i];
   if(p.y<top-300||p.y>bot+300)continue;
@@ -2023,8 +2048,9 @@ function drawClimb(){
  }
  // Drones.
  for(const d of climb.drones){
-  if(d.y<top-200||d.y>bot+200)continue;
-  drawRobot(d.x,d.y,.85,true,1,1,Math.atan2(heli.y-d.y,heli.x-d.x),false);
+  if(d.hp<=0||d.y<top-200||d.y>bot+200)continue;
+  drawRobot(d.x,d.y,.85,true,d.hp/d.max,1,d.aim,d.flash>0);
+  if(d.warn){ctx.save();ctx.setLineDash([5,9]);line(d.x,d.y,heli.x,heli.y,'#ffb66a55',1);ctx.restore();}
   glow(d.x,d.y,44,'#ff8a5a18');
  }
  drawStation(top,bot);
@@ -2069,7 +2095,7 @@ function drawStation(top,bot){
   line(px,y-14,px-6,y-8,'#3f5b63',3);
  }
  label('CLOUDBASE STATION',x,y-215,'#ffe9bd',15);
- label('6 750 m',x,y-196,'#a9d6cf',11);
+ label('10 440 m',x,y-196,'#a9d6cf',11);
  glow(x,y-40,340,'#ffe6ad14');
 }
 // The cloud deck. Rain through the middle of the climb, then a band where the only light is
@@ -2144,7 +2170,7 @@ function finishClimb(){
  AudioState.chiptune(true);
  const flown=Math.round(climb.total),m=Math.floor(flown/60),sec=flown%60;
  const facts=[
-  ['CLIMBED','6 750 m'],
+  ['CLIMBED','10 440 m'],
   ['THE LAST CLIMB',m+' min '+String(sec).padStart(2,'0')+' s'],
   ['ATTEMPTS',String(climb.crashes+1)],
   ['GATES FLOWN','23'],
@@ -2152,7 +2178,7 @@ function finishClimb(){
  ];
  $('creditsRoll').innerHTML=
   '<h2>YOU MADE IT</h2>'
- +'<p class="creditsLede">Cloudbase Station, 6 750 metres. Rotor stopped. Fourteen people came out onto the deck to meet you, and every one of them had been waiting a long time.</p>'
+ +'<p class="creditsLede">Cloudbase Station, 10 440 metres. Rotor stopped. Fourteen people came out onto the deck to meet you, and every one of them had been waiting a long time.</p>'
  +'<div class="creditsFacts">'+facts.map(([k,v])=>'<div><b>'+v+'</b><span>'+k+'</span></div>').join('')+'</div>'
  +'<p class="creditsLede">Seventeen calls. One expedition down a valley that never ended. One climb straight up out of the weather. Nobody left behind.</p>'
  +'<h3>FLYIN OVER IT</h3>'
@@ -2374,6 +2400,3 @@ addEventListener('blur',()=>{if(lost.active)saveLost();clearInput();if(mode==='p
 let previous=0,accumulator=0;function frame(now){const dt=Math.min(.08,(now-previous)/1000||0);previous=now;accumulator+=dt;while(accumulator>=1/120){fixedUpdate(1/120);accumulator-=1/120;}Music.update(dt);render();requestAnimationFrame(frame);}
 resize();loadLevel(OP_START,false);requestAnimationFrame(frame);
 })();
-
-
-

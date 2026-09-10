@@ -8,7 +8,7 @@ const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orie
  testArt:{jungleTree:await loadImage(root+'/assets/nature/rainforest-tree.png'),pine:await loadImage(root+'/assets/nature/pine-mature.webp'),tropical:await loadImage(root+'/assets/backgrounds/tropical-range.webp'),range:await loadImage(root+'/assets/backgrounds/alpine-range.webp'),day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
 
-code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={startClimb,updateClimb,climbBand,climbObstacles,drawClimb,drawClimbWeather,finishClimb,closeCredits,getClimb:()=>climb,CLIMB_FLOOR,CLIMB_TOP,CLIMB_WIDE,CLIMB_PADS,CLIMB_LEVEL,collideObstacles,getObstacles:()=>obstacles,hitHeli,failMission,updateWreck,getWreck:()=>wreck,keys,edges,begin,fixedUpdate,render,updateHUD,ground,Music,AudioState,gearSupport,loadLevel,selectMissions,get:()=>({heli,L,mode,camera,cameraY,vw,vh,save,wind}),set:(o)=>{if('cameraY'in o)cameraY=o.cameraY;if('mode'in o)mode=o.mode}};})();`);
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={updateWeapons,updateProjectiles,weapon,getShots:()=>bullets,startClimb,updateClimb,climbBand,climbObstacles,drawClimb,drawClimbWeather,finishClimb,closeCredits,getClimb:()=>climb,CLIMB_FLOOR,CLIMB_TOP,CLIMB_WIDE,CLIMB_PADS,CLIMB_LEVEL,collideObstacles,getObstacles:()=>obstacles,hitHeli,failMission,updateWreck,getWreck:()=>wreck,keys,edges,begin,fixedUpdate,render,updateHUD,ground,Music,AudioState,gearSupport,loadLevel,selectMissions,get:()=>({heli,L,mode,camera,cameraY,vw,vh,save,wind}),set:(o)=>{if('cameraY'in o)cameraY=o.cameraY;if('mode'in o)mode=o.mode}};})();`);
 vm.createContext(sandbox);vm.runInContext(code,sandbox);
 const a=sandbox.api;
 const step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)};
@@ -201,7 +201,7 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
  const roll=nodes.creditsRoll.innerHTML;
  assert(!nodes.credits.hidden,'the credits are on screen');
  assert(/YOU MADE IT/.test(roll),'they say you finished it');
- assert(/6 750 m/.test(roll),'they carry the height');
+ assert(/10 440 m/.test(roll),'they carry the height');
  // The time on the card is the time actually flown, not a number typed into the page.
  const shown=(roll.match(/(\d+) min (\d+) s/)||[]).slice(1).map(Number);
  assert(shown.length===2,'the credits carry a flight time');
@@ -217,6 +217,27 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
  assert.equal(a.getClimb(),null,'with the climb packed up behind it');
 }
 
+// Combat uses the real shared weapon and projectile pipeline.
+{
+ a.startClimb(true);a.begin();
+ assert(a.get().L.combat,'finale enables existing combat controls');
+ assert(a.CLIMB_WIDE>=1400&&a.CLIMB_FLOOR-a.CLIMB_TOP>23000);
+ assert(a.CLIMB_PADS.length===6,'five service checkpoints plus launch');
+ const c=a.getClimb(),h=a.get().heli,d=c.drones[0];
+ assert(c.drones.length>=7,'patrol encounters throughout the climb');
+ h.x=d.x-160;h.y=d.y;h.angle=0;h.dir=1;h.turn=0;h.yaw=0;
+ const muzzle=a.weapon();d.y=muzzle.y;
+ a.keys.Space=true;a.updateWeapons(.1);a.keys.Space=false;
+ for(let i=0;i<40;i++)a.updateProjectiles(1/120);
+ assert(d.hp<d.max,'cannon damages a climb robot');
+ d.hp=42;h.rockets=8;a.edges.KeyR=true;a.updateWeapons(.8);delete a.edges.KeyR;
+ for(let i=0;i<120;i++)a.updateProjectiles(1/120);
+ assert.equal(d.hp,0,'rocket destroys a climb robot');
+ const enemy=c.drones[1];h.x=enemy.x-150;h.y=enemy.homeY;enemy.cd=0;
+ const before=a.getShots().filter(b=>b.enemy).length;a.updateClimb(.01);
+ assert(a.getShots().filter(b=>b.enemy).length>before,'nearby patrol fires');
+ console.log('PASS: longer/wider finale, five checkpoints, cannon and rocket hits, robot retaliation');
+}
 // 6. It renders, in the dark and in the light, without throwing.
 {
  a.startClimb(true);a.begin();
@@ -232,4 +253,3 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
 }
 console.log('PASS: the shaft has a way through every gate, the weather arrives in order, it can be climbed on fuel, ledges hold, and the ending rolls');
 })().catch(e=>{console.error(e);process.exit(1)});
-
