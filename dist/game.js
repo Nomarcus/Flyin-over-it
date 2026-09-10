@@ -1992,7 +1992,7 @@ function updateClimb(dt){
  // Arrival. The station is a wide deck at the top with the whole crew out on it.
  if(!climb.arrived&&deck?.deck==='station'&&heli.landed&&Math.abs(heli.vx)<30){
   climb.hold+=dt;
-  if(climb.hold>1.1){climb.arrived=true;climb.done=true;saveClimb();finishClimb();}
+  if(climb.hold>1.1){climb.arrived=true;climb.done=true;saveClimb();finishClimb();return;}
  }else if(!climb.arrived)climb.hold=0;
  if(climb.lastSave>6){climb.lastSave=0;saveClimb();}
  if(heli.y>CLIMB_FLOOR+40)heli.y=CLIMB_FLOOR-30.8;
@@ -2163,39 +2163,10 @@ function drawClimbWeather(){
 // the deck, the crew around it, and the credits rolling up over the top with a chiptune under
 // them. Everything in here is written once and read once; it is the last thing anybody sees.
 function finishClimb(){
- mode='credits';clearInput();
- $('mobile').hidden=true;$('pauseBtn').hidden=true;$('hud').hidden=true;
+ // Completion is already persisted by updateClimb. Credits are deferred.
+ clearInput();
  AudioState.sfx('rescue');
- Music.stopForCredits();
- AudioState.chiptune(true);
- const flown=Math.round(climb.total),m=Math.floor(flown/60),sec=flown%60;
- const facts=[
-  ['CLIMBED','10 440 m'],
-  ['THE LAST CLIMB',m+' min '+String(sec).padStart(2,'0')+' s'],
-  ['ATTEMPTS',String(climb.crashes+1)],
-  ['GATES FLOWN','23'],
-  ['CREW WAITING','14']
- ];
- $('creditsRoll').innerHTML=
-  '<h2>YOU MADE IT</h2>'
- +'<p class="creditsLede">Cloudbase Station, 10 440 metres. Rotor stopped. Fourteen people came out onto the deck to meet you, and every one of them had been waiting a long time.</p>'
- +'<div class="creditsFacts">'+facts.map(([k,v])=>'<div><b>'+v+'</b><span>'+k+'</span></div>').join('')+'</div>'
- +'<p class="creditsLede">Seventeen calls. One expedition down a valley that never ended. One climb straight up out of the weather. Nobody left behind.</p>'
- +'<h3>FLYIN OVER IT</h3>'
- +'<div class="creditsBlock"><span>CREATED BY</span><b>Marcus</b></div>'
- +'<div class="creditsBlock"><span>FLIGHT MODEL, TERRAIN, SOUND</span><b>Built with Claude</b></div>'
- +'<div class="creditsBlock"><span>ART AND ENVIRONMENTS</span><b>Built with ChatGPT</b></div>'
- +'<div class="creditsBlock"><span>MUSIC</span><b>Written with Suno</b></div>'
- +'<p class="creditsThanks">This game was made by a person and several machines, working on it together. '
- +'Every helicopter in it was drawn by one, every gate measured by another, and every one of them was told, more than once, that it had got it wrong.<br><br>'
- +'Thank you to the AI that helped build this. It is a strange thing to write at the end of a game about going a very long way to help somebody. '
- +'But that is what it was, and this is where the circle closes.</p>'
- +'<p class="creditsEnd">— THE END —</p>'
- +'<p class="creditsLede">The station is still up there. So is the valley.</p>';
- $('credits').hidden=false;
- $('creditsRoll').classList.remove('rolling');
- void $('creditsRoll').offsetWidth;                       // restart the roll on a replay
- $('creditsRoll').classList.add('rolling');
+ closeCredits();
 }
 function closeCredits(){
  $('credits').hidden=true;

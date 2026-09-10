@@ -196,25 +196,13 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
  h4.x=a.CLIMB_WIDE*.5;
  let atFinish=0;
  for(let i=0;i<200&&a.get().mode==='playing';i++){h4.landed=true;h4.y=a.CLIMB_TOP-30.8;h4.vx=0;a.updateClimb(1/60);atFinish=c.total;}
- assert.equal(a.get().mode,'credits','landing on the station ends the game');
- assert(c.arrived,'and it is marked as arrived');
- const roll=nodes.creditsRoll.innerHTML;
- assert(!nodes.credits.hidden,'the credits are on screen');
- assert(/YOU MADE IT/.test(roll),'they say you finished it');
- assert(/10 440 m/.test(roll),'they carry the height');
- // The time on the card is the time actually flown, not a number typed into the page.
- const shown=(roll.match(/(\d+) min (\d+) s/)||[]).slice(1).map(Number);
- assert(shown.length===2,'the credits carry a flight time');
- assert(Math.abs(shown[0]*60+shown[1]-Math.round(atFinish))<=1,
-  'and it matches the run: card says '+shown.join('m ')+'s against '+Math.round(atFinish)+'s flown');
- assert(/Thank you to the AI/.test(roll),'and they thank the machines that helped build it');
- assert(/Claude/.test(roll)&&/ChatGPT/.test(roll)&&/Suno/.test(roll),'by name');
- assert(!/[åäöÅÄÖ]/.test(roll),'and every word of it is in English');
- // The chiptune plays instead of the record, and the record comes back afterwards.
- a.closeCredits();
- assert(nodes.credits.hidden,'closing puts them away');
- assert.equal(a.get().mode,'menu','and lands back on the main menu');
- assert.equal(a.getClimb(),null,'with the climb packed up behind it');
+ assert.equal(a.get().mode,'menu','landing returns directly to the main menu');
+ assert(c.arrived&&c.done,'completion is retained');
+ assert(nodes.credits.hidden,'credits stay hidden');
+ assert.equal(a.getClimb(),null,'active climb is cleaned up');
+ const saved=JSON.parse(kv.flyinLastClimbV2);
+ assert(saved.done,'completion is saved before returning to menu');
+ assert(!nodes.menu.hidden&&nodes.mobile.hidden,'menu is visible and flight controls are hidden');
 }
 
 // Combat uses the real shared weapon and projectile pipeline.
