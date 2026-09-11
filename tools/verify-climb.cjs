@@ -8,7 +8,7 @@ const sandbox={console,performance:{now:()=>1000},setTimeout:()=>{},screen:{orie
  testArt:{jungleTree:await loadImage(root+'/assets/nature/rainforest-tree.png'),pine:await loadImage(root+'/assets/nature/pine-mature.webp'),tropical:await loadImage(root+'/assets/backgrounds/tropical-range.webp'),range:await loadImage(root+'/assets/backgrounds/alpine-range.webp'),day:await loadImage(root+'/alpine-expedition.webp'),night:await loadImage(root+'/night-expedition.webp'),jungle:await loadImage(root+'/jungle-expedition.webp')}};sandbox.window=sandbox;
 let code=fs.readFileSync(root+'/game.js','utf8').replace(/const art=\{[^\n]+/, 'const art=globalThis.testArt;');
 
-code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={updateWeapons,updateProjectiles,weapon,getShots:()=>bullets,startClimb,updateClimb,climbBand,climbObstacles,drawClimb,drawClimbWeather,finishClimb,closeCredits,getClimb:()=>climb,CLIMB_FLOOR,CLIMB_TOP,CLIMB_WIDE,CLIMB_PADS,CLIMB_LEVEL,collideObstacles,getObstacles:()=>obstacles,hitHeli,failMission,updateWreck,getWreck:()=>wreck,keys,edges,begin,fixedUpdate,render,updateHUD,ground,Music,AudioState,gearSupport,loadLevel,selectMissions,get:()=>({heli,L,mode,camera,cameraY,vw,vh,save,wind}),set:(o)=>{if('cameraY'in o)cameraY=o.cameraY;if('mode'in o)mode=o.mode}};})();`);
+code=code.replace(/\}\)\(\);\s*$/,`globalThis.api={updateCamera,updateWeapons,updateProjectiles,weapon,getShots:()=>bullets,startClimb,updateClimb,climbBand,climbObstacles,drawClimb,drawClimbWeather,finishClimb,closeCredits,getClimb:()=>climb,CLIMB_FLOOR,CLIMB_TOP,CLIMB_WIDE,CLIMB_PADS,CLIMB_LEVEL,collideObstacles,getObstacles:()=>obstacles,hitHeli,failMission,updateWreck,getWreck:()=>wreck,keys,edges,begin,fixedUpdate,render,updateHUD,ground,Music,AudioState,gearSupport,loadLevel,selectMissions,get:()=>({heli,L,mode,camera,cameraY,vw,vh,save,wind}),set:(o)=>{if('cameraY'in o)cameraY=o.cameraY;if('mode'in o)mode=o.mode}};})();`);
 vm.createContext(sandbox);vm.runInContext(code,sandbox);
 const a=sandbox.api;
 const step=(s)=>{for(let i=0;i<Math.round(s*120);i++)a.fixedUpdate(1/120)};
@@ -170,7 +170,7 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
  a.startClimb(true);a.begin();
  const h3=a.get().heli,c=a.getClimb();
  const pad=a.CLIMB_PADS[1];
- h3.x=a.CLIMB_WIDE*.5;h3.y=pad.y-30.8;h3.vx=0;h3.vy=0;h3.landed=true;h3.fuel=40;
+ h3.x=pad.x;h3.y=pad.y-30.8;h3.vx=0;h3.vy=0;h3.landed=true;h3.fuel=40;
  a.updateClimb(1/60);
  assert(c.landed.has(1),'landing on the first ledge holds it');
  assert.equal(c.cp,1,'and it becomes the checkpoint');
@@ -189,6 +189,13 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
  a.startClimb(true);a.begin();
  const h4=a.get().heli,c=a.getClimb();
  c.total=214;c.crashes=2;
+ h4.x=a.CLIMB_WIDE*.5;h4.y=a.CLIMB_TOP-30.8;h4.vx=h4.vy=0;h4.landed=true;
+ for(let i=0;i<100;i++)a.updateClimb(1/60);
+ assert.equal(a.get().mode,'playing','shelter route cannot be skipped');
+ for(const pad of a.CLIMB_PADS.slice(1)){
+  h4.x=pad.x;h4.y=pad.y-30.8;h4.vx=h4.vy=0;h4.landed=true;a.updateClimb(1/60);
+ }
+ assert.equal(c.landed.size,a.CLIMB_PADS.length,'all side shelters visited');
  h4.x=a.CLIMB_WIDE*.5;h4.y=a.CLIMB_TOP-30.8;h4.vx=0;h4.vy=0;h4.landed=true;
  h4.x=110;
  for(let i=0;i<80;i++)a.updateClimb(1/60);
@@ -200,7 +207,7 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
  assert(c.arrived&&c.done,'completion is retained');
  assert(nodes.credits.hidden,'credits stay hidden');
  assert.equal(a.getClimb(),null,'active climb is cleaned up');
- const saved=JSON.parse(kv.flyinLastClimbV2);
+ const saved=JSON.parse(kv.flyinLastClimbV3);
  assert(saved.done,'completion is saved before returning to menu');
  assert(!nodes.menu.hidden&&nodes.mobile.hidden,'menu is visible and flight controls are hidden');
 }
@@ -209,7 +216,7 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
 {
  a.startClimb(true);a.begin();
  assert(a.get().L.combat,'finale enables existing combat controls');
- assert(a.CLIMB_WIDE>=1400&&a.CLIMB_FLOOR-a.CLIMB_TOP>23000);
+ assert(a.CLIMB_WIDE>=1900&&a.CLIMB_FLOOR-a.CLIMB_TOP>23000);
  assert(a.CLIMB_PADS.length===6,'five service checkpoints plus launch');
  const c=a.getClimb(),h=a.get().heli,d=c.drones[0];
  assert(c.drones.length>=7,'patrol encounters throughout the climb');
@@ -232,12 +239,13 @@ assert.equal(Math.round(h.y+30.8),a.CLIMB_FLOOR,'on the floor of the shaft');
  const h5=a.get().heli,c=a.getClimb();
  for(const f of [0,.3,.5,.6,.85,1]){
   h5.y=a.CLIMB_FLOOR+(a.CLIMB_TOP-a.CLIMB_FLOOR)*f;h5.x=a.CLIMB_WIDE*.5;
+  for(let k=0;k<180;k++)a.updateCamera(1/60);
   c.mood=a.climbBand(h5.y);a.set({cameraY:h5.y-a.get().vh*.5});
   for(const light of [false,true]){c.light=light;a.updateHUD();a.render();}
- if(f===1)fs.writeFileSync('/tmp/climb-station.png',nodes.game.toBuffer('image/png'));
+ fs.writeFileSync('/tmp/climb-'+f+'.png',nodes.game.toBuffer('image/png'));
  }
- assert(/CLOUDBASE STATION/.test(nodes.compactGoal.textContent),'and the rail says where you are going, got '+nodes.compactGoal.textContent);
- assert(/TO GO/.test(nodes.compactGoal.textContent),'and how much is left');
+ assert(/CHECKPOINT/.test(nodes.compactGoal.textContent),'and the rail says where you are going, got '+nodes.compactGoal.textContent);
+ assert(/m/.test(nodes.compactGoal.textContent),'and how much is left');
 }
 console.log('PASS: the shaft has a way through every gate, the weather arrives in order, it can be climbed on fuel, ledges hold, and the ending rolls');
 })().catch(e=>{console.error(e);process.exit(1)});
